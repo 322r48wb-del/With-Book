@@ -1,0 +1,6 @@
+{
+  "name": "With Book",
+  "description": "A beautifully crafted personal reading journal, log, and AI-powered book recommendation engine.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
