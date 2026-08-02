@@ -218,11 +218,17 @@ export default function App() {
 
   // Calculate statistics
   // Calculate statistics
-const totalBooks = library?.length || 0;
-const readingCount = library?.filter((b) => b.status === 'reading')?.length || 0;
-const completedCount = library?.filter((b) => b.status === 'completed')?.length || 0;
-const wishlistCount = library?.filter((b) => b.status === 'to-read')?.length || 0;
-const favoriteCount = library?.filter((b) => b.favorite)?.length || 0;
+// Before
+const count = data.items.length;
+
+// After (Option 1: Optional Chaining - returns undefined if items is missing)
+const count = data.items?.length;
+
+// After (Option 2: Nullish coalescing - returns 0 if items is missing)
+const count = data.items?.length ?? 0;
+
+// After (Option 3: Guard clause for rendering)
+if (!data.items) return null;
   // Filter & search criteria
   const processedBooks = library
     .filter((book) => {
