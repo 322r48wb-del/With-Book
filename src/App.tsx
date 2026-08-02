@@ -27,7 +27,7 @@ import AIRecommendCard from './components/AIRecommendCard';
 import BookDetailModal from './components/BookDetailModal';
 import GoogleDriveSync from './components/GoogleDriveSync';
 import FavoriteAuthorReleases from './components/FavoriteAuthorReleases';
-import { ChatCorner } from './components/ChatCorner';
+import ChatCorner from './components/ChatCorner';
 import HighlightText from './components/HighlightText';
 
 // Pre-seeded library items for a luxurious, lived-in feel on first load
