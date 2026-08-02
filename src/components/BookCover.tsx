@@ -2,22 +2,21 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-
 import React, { useState, useEffect } from 'react';
 
 interface BookCoverProps {
-  title: string;
-  author: string;
-  genre: string;
+  title?: string;
+  author?: string;
+  genre?: string;
   coverUrl?: string;
-  isbn?: string;
+  isbn?: string | number;
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
 export default function BookCover({
-  title,
-  author,
-  genre,
+  title = 'Untitled',
+  author = 'Unknown Author',
+  genre = '',
   coverUrl,
   isbn,
   size = 'md',
@@ -30,8 +29,9 @@ export default function BookCover({
     if (coverUrl) {
       setResolvedUrl(coverUrl);
     } else if (isbn) {
-      // Clean up ISBN (only numbers)
-      const cleanIsbn = isbn.replace(/[^0-9]/g, '');
+      // Clean up ISBN (only numbers, string conversion guard)
+      const isbnStr = String(isbn);
+      const cleanIsbn = isbnStr.replace(/[^0-9]/g, '');
       if (cleanIsbn) {
         setResolvedUrl(`https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`);
       } else {
@@ -42,8 +42,10 @@ export default function BookCover({
     }
   }, [coverUrl, isbn]);
 
-  const getGenreStyle = (g: string) => {
-    const genreLower = g.toLowerCase();
+  const getGenreStyle = (g: string = '') => {
+    // undefined ガードを追加
+    const genreLower = (g || '').toLowerCase();
+
     if (genreLower.includes('sci-fi') || genreLower.includes('fiction') || genreLower.includes('space')) {
       return {
         bg: 'bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900',
@@ -100,7 +102,7 @@ export default function BookCover({
       <div className={`relative ${dimensions[size]} rounded-md overflow-hidden shadow-lg border border-stone-200/50 transition-all duration-300 hover:scale-[1.02]`}>
         <img
           src={resolvedUrl}
-          alt={title}
+          alt={title || 'Book Cover'}
           referrerPolicy="no-referrer"
           className="w-full h-full object-cover"
           onError={() => setImageError(true)}
