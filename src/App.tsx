@@ -217,12 +217,12 @@ export default function App() {
   };
 
   // Calculate statistics
-  const totalBooks = library.length;
-  const readingCount = library.filter((b) => b.status === 'reading').length;
-  const completedCount = library.filter((b) => b.status === 'completed').length;
-  const wishlistCount = library.filter((b) => b.status === 'to-read').length;
-  const favoriteCount = library.filter((b) => b.favorite).length;
-
+  // Calculate statistics
+const totalBooks = library?.length || 0;
+const readingCount = library?.filter((b) => b.status === 'reading')?.length || 0;
+const completedCount = library?.filter((b) => b.status === 'completed')?.length || 0;
+const wishlistCount = library?.filter((b) => b.status === 'to-read')?.length || 0;
+const favoriteCount = library?.filter((b) => b.favorite)?.length || 0;
   // Filter & search criteria
   const processedBooks = library
     .filter((book) => {
