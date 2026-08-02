@@ -217,18 +217,11 @@ export default function App() {
   };
 
   // Calculate statistics
-  // Calculate statistics
-// Before
-const count = data.items.length;
-
-// After (Option 1: Optional Chaining - returns undefined if items is missing)
-const count = data.items?.length;
-
-// After (Option 2: Nullish coalescing - returns 0 if items is missing)
-const count = data.items?.length ?? 0;
-
-// After (Option 3: Guard clause for rendering)
-if (!data.items) return null;
+  const totalBooks = library.length;
+  const readingCount = library.filter((b) => b.status === 'reading').length;
+  const completedCount = library.filter((b) => b.status === 'completed').length;
+  const wishlistCount = library.filter((b) => b.status === 'to-read').length;
+  const favoriteCount = library.filter((b) => b.favorite).length;
   // Filter & search criteria
   const processedBooks = library
     .filter((book) => {
