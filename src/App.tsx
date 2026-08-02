@@ -130,7 +130,7 @@ export default function App() {
       dateAdded: new Date().toISOString().split('T')[0],
       keyQuotes: []
     };
-    const updated = [newBook, ...library];
+    const updated = [newBook, ...(library || [])];
     saveLibraryState(updated);
     // Automatically trigger notes opening to let them review
     setSelectedBook(newBook);
@@ -139,7 +139,7 @@ export default function App() {
   // Add highly targeted recommended books
   const handleAddRecommendation = (rec: AIRecommendation) => {
     // Check if recommendation is already added to prevent duplicates
-    if (library.some(b => b.title.toLowerCase() === rec.title.toLowerCase())) {
+    if ((library || []).some(b => b?.title?.toLowerCase() === rec.title?.toLowerCase())) {
       alert(`"${rec.title}" is already in your reading log!`);
       return;
     }
@@ -151,14 +151,14 @@ export default function App() {
       genre: rec.genre,
       cover: '', // uses beautiful CSS fallback cover automatically
       description: `Gemini recommended: "${rec.reason}"`,
-      userNotes: `Discovered via Gemini AI Suggestion: "Perfect for me because ${rec.reason.slice(0, 100)}..."`,
+      userNotes: `Discovered via Gemini AI Suggestion: "Perfect for me because ${rec.reason?.slice(0, 100)}..."`,
       rating: 0,
       status: 'to-read',
       favorite: false,
       dateAdded: new Date().toISOString().split('T')[0],
       keyQuotes: []
     };
-    const updated = [newBook, ...library];
+    const updated = [newBook, ...(library || [])];
     saveLibraryState(updated);
     setSelectedBook(newBook);
   };
@@ -170,20 +170,20 @@ export default function App() {
       dateAdded: new Date().toISOString().split('T')[0],
       keyQuotes: []
     };
-    const updated = [newBook, ...library];
+    const updated = [newBook, ...(library || [])];
     saveLibraryState(updated);
     setSelectedBook(newBook);
   };
 
   // Save specific book updates inside the modal
   const handleSaveBookDetails = (updatedBook: Book) => {
-    const updated = library.map((b) => (b.id === updatedBook.id ? updatedBook : b));
+    const updated = (library || []).map((b) => (b.id === updatedBook.id ? updatedBook : b));
     saveLibraryState(updated);
   };
 
   // Delete book from logs
   const handleDeleteBook = (id: string) => {
-    const updated = library.filter((b) => b.id !== id);
+    const updated = (library || []).filter((b) => b.id !== id);
     saveLibraryState(updated);
   };
 
@@ -198,15 +198,17 @@ export default function App() {
   };
 
   // Calculate statistics
-  const totalBooks = library.length;
-  const readingCount = library.filter((b) => b.status === 'reading').length;
-  const completedCount = library.filter((b) => b.status === 'completed').length;
-  const wishlistCount = library.filter((b) => b.status === 'to-read').length;
-  const favoriteCount = library.filter((b) => b.favorite).length;
+  const safeLibrary = library || [];
+  const totalBooks = safeLibrary.length;
+  const readingCount = safeLibrary.filter((b) => b?.status === 'reading').length;
+  const completedCount = safeLibrary.filter((b) => b?.status === 'completed').length;
+  const wishlistCount = safeLibrary.filter((b) => b?.status === 'to-read').length;
+  const favoriteCount = safeLibrary.filter((b) => b?.favorite).length;
 
   // Filter & search criteria
-  const processedBooks = library
+  const processedBooks = safeLibrary
     .filter((book) => {
+      if (!book) return false;
       // Tab filters
       if (activeTab === 'reading') return book.status === 'reading';
       if (activeTab === 'to-read') return book.status === 'to-read';
@@ -219,15 +221,15 @@ export default function App() {
       const term = searchFilter.toLowerCase().trim();
       if (!term) return true;
 
-      const matchQuotes = book.keyQuotes && Array.isArray(book.keyQuotes)
-        ? book.keyQuotes.some((q) => q.toLowerCase().includes(term))
+      const matchQuotes = Array.isArray(book.keyQuotes)
+        ? book.keyQuotes.some((q) => q?.toLowerCase().includes(term))
         : false;
       const matchDesc = book.description?.toLowerCase().includes(term);
 
       return (
-        book.title.toLowerCase().includes(term) ||
-        book.author.toLowerCase().includes(term) ||
-        book.genre.toLowerCase().includes(term) ||
+        book.title?.toLowerCase().includes(term) ||
+        book.author?.toLowerCase().includes(term) ||
+        book.genre?.toLowerCase().includes(term) ||
         (book.userNotes && book.userNotes.toLowerCase().includes(term)) ||
         Boolean(matchQuotes) ||
         Boolean(matchDesc)
@@ -236,10 +238,10 @@ export default function App() {
     .sort((a, b) => {
       // Sorting rule
       if (sortBy === 'rating') {
-        return b.rating - a.rating;
+        return (b.rating || 0) - (a.rating || 0);
       }
       // default: latest dateAdded first
-      return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
+      return new Date(b.dateAdded || 0).getTime() - new Date(a.dateAdded || 0).getTime();
     });
 
   return (
@@ -339,10 +341,10 @@ export default function App() {
         {/* Left side panel: optical simulated scanner & AI Companion box */}
         <section id="sidebar-controls" className="lg:col-span-4 order-2 lg:order-2 space-y-6 flex flex-col w-full">
           {/* AI Advisor Box */}
-          <AIRecommendCard library={library} onAddRecommendation={handleAddRecommendation} />
+          <AIRecommendCard library={safeLibrary} onAddRecommendation={handleAddRecommendation} />
 
           {/* Scanner & Keyword Lookup */}
-          <ScannerAndSearch library={library} onAddBook={handleAddBook} />
+          <ScannerAndSearch library={safeLibrary} onAddBook={handleAddBook} />
 
           {/* Quick instructions manual */}
           <div className="bg-[#16191F]/60 border border-[#212429] p-4 rounded-xl flex gap-3 text-[#9CA3AF] text-xs leading-relaxed">
@@ -359,7 +361,7 @@ export default function App() {
         {/* Right side reading log lists / grid logs */}
         <section id="library-catalog" className="lg:col-span-8 order-1 lg:order-1 space-y-6 w-full">
           {/* Favorite Authors' New Releases Tracker */}
-          <FavoriteAuthorReleases library={library} onAddBook={handleAddNewRelease} />
+          <FavoriteAuthorReleases library={safeLibrary} onAddBook={handleAddNewRelease} />
 
           {/* Filtering bar and Sorting options */}
           <div className="bg-[#0F1115] border border-[#212429] rounded-xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 shadow-md">
@@ -523,8 +525,8 @@ export default function App() {
                     {/* Meta stats date block */}
                     <div className="flex items-center justify-between text-[9px] text-[#6B7280] font-mono mt-2 pt-2 border-t border-[#212429]">
                       <span>Added: {book.dateAdded}</span>
-                      {book.keyQuotes && book.keyQuotes?.length > 0 && (
-                        <span>💬 {book.keyQuotes.length} Quotes</span>
+                      {Boolean(book.keyQuotes && book.keyQuotes.length > 0) && (
+                        <span>💬 {book.keyQuotes?.length} Quotes</span>
                       )}
                     </div>
                   </div>
@@ -558,7 +560,7 @@ export default function App() {
             <h2 className="text-lg font-serif font-bold text-white mb-4 flex items-center gap-2">
               <Cloud className="w-5 h-5 text-amber-500" /> Cloud Sync
             </h2>
-            <GoogleDriveSync library={library} onImport={saveLibraryState} />
+            <GoogleDriveSync library={safeLibrary} onImport={saveLibraryState} />
           </div>
         </div>
       )}
@@ -569,8 +571,7 @@ export default function App() {
       </footer>
 
       {/* Global AI Chat Assistant Floating Drawer */}
-      <ChatCorner library={library} onAddBook={handleAddBook} />
+      <ChatCorner library={safeLibrary} onAddBook={handleAddBook} />
     </div>
   );
 }
- 
