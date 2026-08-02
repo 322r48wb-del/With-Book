@@ -2,24 +2,8 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-
 import React, { useState, useEffect } from 'react';
-import { 
-  BookOpen, 
-  CheckCircle2, 
-  Clock, 
-  Heart, 
-  Star, 
-  Search, 
-  SlidersHorizontal, 
-  BarChart3, 
-  Trophy, 
-  BookMarked,
-  Info,
-  Settings,
-  X,
-  Cloud
-} from 'lucide-react';
+import { BookOpen, CheckCircle2, Clock, Heart, Star, Search, SlidersHorizontal, BarChart3, Trophy, BookMarked, Info, Settings, X, Cloud } from 'lucide-react';
 import { Book, ReadingStatus, AIRecommendation } from './types';
 import BookCover from './components/BookCover';
 import ScannerAndSearch from './components/ScannerAndSearch';
@@ -100,7 +84,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'all' | ReadingStatus | 'favorites'>('all');
   const [sortBy, setSortBy] = useState<'dateAdded' | 'rating'>('dateAdded');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  
+
   // Custom reading target goals
   const [readingGoal, setReadingGoal] = useState<number>(12);
   const [goalEditing, setGoalEditing] = useState(false);
@@ -146,10 +130,8 @@ export default function App() {
       dateAdded: new Date().toISOString().split('T')[0],
       keyQuotes: []
     };
-
     const updated = [newBook, ...library];
     saveLibraryState(updated);
-    
     // Automatically trigger notes opening to let them review
     setSelectedBook(newBook);
   };
@@ -176,7 +158,6 @@ export default function App() {
       dateAdded: new Date().toISOString().split('T')[0],
       keyQuotes: []
     };
-
     const updated = [newBook, ...library];
     saveLibraryState(updated);
     setSelectedBook(newBook);
@@ -196,7 +177,7 @@ export default function App() {
 
   // Save specific book updates inside the modal
   const handleSaveBookDetails = (updatedBook: Book) => {
-    const updated = library.map((b) => b.id === updatedBook.id ? updatedBook : b);
+    const updated = library.map((b) => (b.id === updatedBook.id ? updatedBook : b));
     saveLibraryState(updated);
   };
 
@@ -222,6 +203,7 @@ export default function App() {
   const completedCount = library.filter((b) => b.status === 'completed').length;
   const wishlistCount = library.filter((b) => b.status === 'to-read').length;
   const favoriteCount = library.filter((b) => b.favorite).length;
+
   // Filter & search criteria
   const processedBooks = library
     .filter((book) => {
@@ -236,13 +218,17 @@ export default function App() {
       // Text search matching title or author or notes or genre or quotes or description
       const term = searchFilter.toLowerCase().trim();
       if (!term) return true;
-      const matchQuotes = book.keyQuotes?.some((q) => q.toLowerCase().includes(term));
+
+      const matchQuotes = book.keyQuotes && Array.isArray(book.keyQuotes)
+        ? book.keyQuotes.some((q) => q.toLowerCase().includes(term))
+        : false;
       const matchDesc = book.description?.toLowerCase().includes(term);
+
       return (
         book.title.toLowerCase().includes(term) ||
         book.author.toLowerCase().includes(term) ||
         book.genre.toLowerCase().includes(term) ||
-        book.userNotes.toLowerCase().includes(term) ||
+        (book.userNotes && book.userNotes.toLowerCase().includes(term)) ||
         Boolean(matchQuotes) ||
         Boolean(matchDesc)
       );
@@ -258,7 +244,6 @@ export default function App() {
 
   return (
     <div id="app-container" className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 selection:bg-amber-500/30">
-      
       {/* Header section with brand typography */}
       <header className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#212429] pb-6 mb-8 gap-4">
         <div>
@@ -332,9 +317,10 @@ export default function App() {
                 )}
               </div>
             </div>
+
             {/* Minimal Circular Goal progress percent */}
             <div className="text-[10px] font-mono font-semibold text-[#9CA3AF] bg-[#212429] rounded-full px-1.5 py-0.5 ml-1">
-              {Math.min(100, Math.round((completedCount / readingGoal) * 100))}%
+              {Math.min(100, Math.round((completedCount / (readingGoal || 1)) * 100))}%
             </div>
           </div>
 
@@ -350,7 +336,6 @@ export default function App() {
 
       {/* Main core interface grid */}
       <main className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start flex-1 w-full">
-        
         {/* Left side panel: optical simulated scanner & AI Companion box */}
         <section id="sidebar-controls" className="lg:col-span-4 order-2 lg:order-2 space-y-6 flex flex-col w-full">
           {/* AI Advisor Box */}
@@ -373,71 +358,66 @@ export default function App() {
 
         {/* Right side reading log lists / grid logs */}
         <section id="library-catalog" className="lg:col-span-8 order-1 lg:order-1 space-y-6 w-full">
-          
           {/* Favorite Authors' New Releases Tracker */}
-          <FavoriteAuthorReleases 
-            library={library} 
-            onAddBook={handleAddNewRelease} 
-          />
+          <FavoriteAuthorReleases library={library} onAddBook={handleAddNewRelease} />
 
           {/* Filtering bar and Sorting options */}
           <div className="bg-[#0F1115] border border-[#212429] rounded-xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 shadow-md">
-            
             {/* Quick Filter Tabs */}
             <div className="flex flex-wrap items-center gap-1.5">
               <button
                 onClick={() => setActiveTab('all')}
-                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all
-                  ${activeTab === 'all' 
-                    ? 'bg-amber-500 text-black font-bold' 
+                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all ${
+                  activeTab === 'all'
+                    ? 'bg-amber-500 text-black font-bold'
                     : 'bg-transparent text-[#9CA3AF] hover:bg-[#16191F] hover:text-white'
-                  }`}
+                }`}
               >
                 All ({totalBooks})
               </button>
+
               <button
                 onClick={() => setActiveTab('reading')}
-                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1
-                  ${activeTab === 'reading' 
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold' 
+                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1 ${
+                  activeTab === 'reading'
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold'
                     : 'bg-transparent text-[#9CA3AF] hover:bg-[#16191F] hover:text-white'
-                  }`}
+                }`}
               >
-                <BookOpen className="w-3.5 h-3.5" />
-                Reading ({readingCount})
+                <BookOpen className="w-3.5 h-3.5" /> Reading ({readingCount})
               </button>
+
               <button
                 onClick={() => setActiveTab('to-read')}
-                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1
-                  ${activeTab === 'to-read' 
-                    ? 'bg-zinc-800 text-white border border-[#212429]' 
+                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1 ${
+                  activeTab === 'to-read'
+                    ? 'bg-zinc-800 text-white border border-[#212429]'
                     : 'bg-transparent text-[#9CA3AF] hover:bg-[#16191F] hover:text-white'
-                  }`}
+                }`}
               >
-                <Clock className="w-3.5 h-3.5" />
-                To Read ({wishlistCount})
+                <Clock className="w-3.5 h-3.5" /> To Read ({wishlistCount})
               </button>
+
               <button
                 onClick={() => setActiveTab('completed')}
-                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1
-                  ${activeTab === 'completed' 
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold' 
+                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1 ${
+                  activeTab === 'completed'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold'
                     : 'bg-transparent text-[#9CA3AF] hover:bg-[#16191F] hover:text-white'
-                  }`}
+                }`}
               >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Done ({completedCount})
+                <CheckCircle2 className="w-3.5 h-3.5" /> Done ({completedCount})
               </button>
+
               <button
                 onClick={() => setActiveTab('favorites')}
-                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1
-                  ${activeTab === 'favorites' 
-                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold' 
+                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1 ${
+                  activeTab === 'favorites'
+                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold'
                     : 'bg-transparent text-[#9CA3AF] hover:bg-[#16191F] hover:text-white'
-                  }`}
+                }`}
               >
-                <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-500/30" />
-                Favorites ({favoriteCount})
+                <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-500/30" /> Favorites ({favoriteCount})
               </button>
             </div>
 
@@ -463,7 +443,6 @@ export default function App() {
                 <option value="rating">Sort: Best Rating</option>
               </select>
             </div>
-
           </div>
 
           {/* Book Catalog list/grid visualization */}
@@ -474,10 +453,9 @@ export default function App() {
                 No matching journal logs
               </h3>
               <p className="text-[#6B7280] text-xs mt-1 max-w-sm font-sans">
-                {searchFilter 
-                  ? 'We couldn’t find any books matching those keywords. Try refining your filters.' 
-                  : 'This tab is empty! Add a book via simulated barcode scans or query any title to populate your library.'
-                }
+                {searchFilter
+                  ? 'We couldn’t find any books matching those keywords. Try refining your filters.'
+                  : 'This tab is empty! Add a book via simulated barcode scans or query any title to populate your library.'}
               </p>
             </div>
           ) : (
@@ -503,13 +481,15 @@ export default function App() {
                     <div>
                       {/* Badge and Star rating rows */}
                       <div className="flex items-center justify-between gap-1">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider
-                          ${book.status === 'completed' 
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                            : book.status === 'reading'
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            : 'bg-zinc-800 text-stone-300 border border-[#212429]'
-                          }`}>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider ${
+                            book.status === 'completed'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              : book.status === 'reading'
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                              : 'bg-zinc-800 text-stone-300 border border-[#212429]'
+                          }`}
+                        >
                           {book.status === 'completed' ? 'Done' : book.status === 'reading' ? 'Reading' : 'To Read'}
                         </span>
 
@@ -543,7 +523,7 @@ export default function App() {
                     {/* Meta stats date block */}
                     <div className="flex items-center justify-between text-[9px] text-[#6B7280] font-mono mt-2 pt-2 border-t border-[#212429]">
                       <span>Added: {book.dateAdded}</span>
-                      {book.keyQuotes && book.keyQuotes.length > 0 && (
+                      {book.keyQuotes && book.keyQuotes?.length > 0 && (
                         <span>💬 {book.keyQuotes.length} Quotes</span>
                       )}
                     </div>
@@ -552,9 +532,7 @@ export default function App() {
               ))}
             </div>
           )}
-
         </section>
-
       </main>
 
       {/* Exquisite side sliding drawer / journal detail modal */}
@@ -567,51 +545,32 @@ export default function App() {
         />
       )}
 
+      {/* Cloud Settings Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#16191F] border border-[#212429] rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+            <button
+              onClick={() => setIsSettingsOpen(false)}
+              className="absolute top-4 right-4 text-[#6B7280] hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-serif font-bold text-white mb-4 flex items-center gap-2">
+              <Cloud className="w-5 h-5 text-amber-500" /> Cloud Sync
+            </h2>
+            <GoogleDriveSync library={library} onImport={saveLibraryState} />
+          </div>
+        </div>
+      )}
+
       {/* Editorial copyright brand footer */}
       <footer className="mt-16 border-t border-[#212429] py-8 text-center text-[#4B5563] font-mono text-[10px] tracking-[0.2em] uppercase">
         © 2026 WITH BOOK • CRAFTED WITH DEDICATION • OFFLINE FIRST JOURNALING
       </footer>
 
-      {/* Cloud Sync Settings Sidebar Drawer */}
-      {isSettingsOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setIsSettingsOpen(false)}
-          />
-          <div className="relative w-full max-w-md bg-[#0A0B0D] h-full shadow-2xl border-l border-[#212429] flex flex-col animate-slide-in-right overflow-y-auto">
-            <div className="p-4 border-b border-[#212429] flex items-center justify-between sticky top-0 bg-[#0A0B0D]/90 backdrop-blur z-10">
-              <h2 className="text-white font-serif font-bold text-lg flex items-center gap-2">
-                <Settings className="w-5 h-5 text-amber-500" />
-                Settings & Cloud Sync
-              </h2>
-              <button 
-                onClick={() => setIsSettingsOpen(false)}
-                className="p-2 bg-[#16191F] hover:bg-[#212429] text-[#9CA3AF] hover:text-white rounded-full transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-4 space-y-6">
-              <GoogleDriveSync 
-                library={library} 
-                readingGoal={readingGoal} 
-                onRestore={(restoredLib, restoredGoal) => {
-                  setLibrary(restoredLib);
-                  setReadingGoal(restoredGoal);
-                  localStorage.setItem('withbook_library', JSON.stringify(restoredLib));
-                  localStorage.setItem('withbook_reading_goal', restoredGoal.toString());
-                }} 
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Persistent floating AI chat corner */}
-      <ChatCorner library={library} />
-
+      {/* Global AI Chat Assistant Floating Drawer */}
+      <ChatCorner library={library} onAddBook={handleAddBook} />
     </div>
   );
 }
+ 
