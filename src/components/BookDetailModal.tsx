@@ -15,28 +15,31 @@ interface BookDetailModalProps {
 }
 
 export default function BookDetailModal({ book, onClose, onSave, onDelete }: BookDetailModalProps) {
-  const [status, setStatus] = useState<ReadingStatus>(book.status);
-  const [rating, setRating] = useState<number>(book.rating);
+  const [status, setStatus] = useState<ReadingStatus>(book?.status || 'to-read');
+  const [rating, setRating] = useState<number>(book?.rating || 0);
   const [hoverRating, setHoverRating] = useState<number>(0);
-  const [userNotes, setUserNotes] = useState<string>(book.userNotes || '');
-  const [favorite, setFavorite] = useState<boolean>(book.favorite || false);
-  const [dateStarted, setDateStarted] = useState<string>(book.dateStarted || '');
-  const [dateCompleted, setDateCompleted] = useState<string>(book.dateCompleted || '');
+  const [userNotes, setUserNotes] = useState<string>(book?.userNotes || '');
+  const [favorite, setFavorite] = useState<boolean>(book?.favorite || false);
+  const [dateStarted, setDateStarted] = useState<string>(book?.dateStarted || '');
+  const [dateCompleted, setDateCompleted] = useState<string>(book?.dateCompleted || '');
 
-  const [quotes, setQuotes] = useState<string[]>(book.keyQuotes || []);
+  const [quotes, setQuotes] = useState<string[]>(Array.isArray(book?.keyQuotes) ? book.keyQuotes : []);
   const [newQuote, setNewQuote] = useState<string>('');
 
   useEffect(() => {
-    setStatus(book.status);
-    setRating(book.rating);
-    setUserNotes(book.userNotes || '');
-    setFavorite(book.favorite || false);
-    setDateStarted(book.dateStarted || '');
-    setDateCompleted(book.dateCompleted || '');
-    setQuotes(book.keyQuotes || []);
+    if (book) {
+      setStatus(book.status || 'to-read');
+      setRating(book.rating || 0);
+      setUserNotes(book.userNotes || '');
+      setFavorite(book.favorite || false);
+      setDateStarted(book.dateStarted || '');
+      setDateCompleted(book.dateCompleted || '');
+      setQuotes(Array.isArray(book.keyQuotes) ? book.keyQuotes : []);
+    }
   }, [book]);
 
   const handleSave = () => {
+    if (!book) return;
     onSave({
       ...book,
       status,
@@ -61,15 +64,26 @@ export default function BookDetailModal({ book, onClose, onSave, onDelete }: Boo
     setQuotes(quotes.filter((_, i) => i !== index));
   };
 
+  if (!book) return null;
+
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="p-6 border-b border-slate-800 flex justify-between items-start sticky top-0 bg-slate-900/90 backdrop-blur z-10">
           <div className="flex gap-4">
-            <BookCover title={book.title} author={book.author} coverUrl={book.coverUrl} className="w-16 h-24 shrink-0" />
+            <div className="w-16 h-24 shrink-0 overflow-hidden rounded">
+              <BookCover
+                title={book.title || 'Untitled'}
+                author={book.author || 'Unknown'}
+                genre={book.genre || ''}
+                coverUrl={book.cover || (book as any).coverUrl}
+                isbn={book.isbn}
+                size="sm"
+              />
+            </div>
             <div>
-              <h2 className="text-xl font-bold text-white">{book.title}</h2>
-              <p className="text-sm text-slate-400 mt-1">{book.author}</p>
+              <h2 className="text-xl font-bold text-white">{book.title || 'Untitled'}</h2>
+              <p className="text-sm text-slate-400 mt-1">{book.author || 'Unknown Author'}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
@@ -86,10 +100,9 @@ export default function BookDetailModal({ book, onClose, onSave, onDelete }: Boo
                 onChange={(e) => setStatus(e.target.value as ReadingStatus)}
                 className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-amber-500"
               >
-                <option value="unread">未読</option>
+                <option value="to-read">読みたい</option>
                 <option value="reading">読書中</option>
                 <option value="completed">読了</option>
-                <option value="wishlist">読みたい</option>
               </select>
             </div>
 
@@ -152,7 +165,7 @@ export default function BookDetailModal({ book, onClose, onSave, onDelete }: Boo
               <Quote className="w-4 h-4 text-amber-400" /> 心に残ったフレーズ
             </label>
             <div className="space-y-2 mb-3">
-              {quotes.map((q, idx) => (
+              {(quotes || []).map((q, idx) => (
                 <div key={idx} className="flex justify-between items-center bg-slate-800/60 border border-slate-700/50 p-2.5 rounded-lg text-sm text-slate-200">
                   <p className="italic">"{q}"</p>
                   <button onClick={() => handleRemoveQuote(idx)} className="text-slate-500 hover:text-rose-400 ml-2">
