@@ -1,558 +1,443 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
 import React, { useState, useEffect } from 'react';
-import { BookOpen, CheckCircle2, Clock, Heart, Star, Search, SlidersHorizontal, BarChart3, Trophy, BookMarked, Info, Settings, X, Cloud } from 'lucide-react';
-import { Book, ReadingStatus, AIRecommendation } from './types';
-import BookCover from './components/BookCover';
-import ScannerAndSearch from './components/ScannerAndSearch';
-import AIRecommendCard from './components/AIRecommendCard';
-import BookDetailModal from './components/BookDetailModal';
-import GoogleDriveSync from './components/GoogleDriveSync';
-import FavoriteAuthorReleases from './components/FavoriteAuthorReleases';
-import ChatCorner from './components/ChatCorner';
-import HighlightText from './components/HighlightText';
+import { Book, Position2D } from './types';
+import {
+  BookOpen,
+  Plus,
+  LayoutGrid,
+  MapPin,
+  Sparkles,
+  Search,
+  BookMarked,
+  Layers,
+  Award,
+  RefreshCw,
+  Share2,
+  Download,
+  X,
+  CheckCircle2
+} from 'lucide-react';
+import { ScannerAndSearch } from './components/ScannerAndSearch';
+import { BookPositioningMap } from './components/BookPositioningMap';
+import { AIRecommendCard } from './components/AIRecommendCard';
+import { BookDetailModal } from './components/BookDetailModal';
+import { ShareLogsModal } from './components/ShareLogsModal';
+import { ChatCorner } from './components/ChatCorner';
+import { FavoriteAuthorReleases } from './components/FavoriteAuthorReleases';
+import { GoogleDriveSync } from './components/GoogleDriveSync';
+import { BookCover } from './components/BookCover';
 
-// Pre-seeded library items for a luxurious, lived-in feel on first load
-const INITIAL_LIBRARY_SEEDS: Book[] = [
+const INITIAL_BOOKS: Book[] = [
   {
-    id: 'seed-1',
-    title: 'Dune',
-    author: 'Frank Herbert',
-    genre: 'Sci-Fi',
-    cover: 'https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1555447414i/44767458.jpg',
-    isbn: '9780441172719',
-    description: 'Set on the desert planet Arrakis, Dune is the story of the boy Paul Atreides, who would become the mysterious man known as Muad\'Dib.',
-    userNotes: 'Incredible grand worldbuilding! The ecological message and planetary politics are fascinating. However, I found the pace slightly slower in the middle act, especially around Arrakeen. The prose is deeply philosophical.',
-    rating: 4,
-    status: 'completed',
-    dateAdded: '2026-06-15',
-    dateStarted: '2026-06-16',
-    dateCompleted: '2026-06-30',
-    favorite: true,
-    keyQuotes: [
-      'Fear is the mind-killer.',
-      'There is no escape—we pay for the violence of our ancestors.'
-    ]
-  },
-  {
-    id: 'seed-2',
-    title: 'The Silent Patient',
-    author: 'Alex Michaelides',
-    genre: 'Thriller',
-    cover: 'https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1668782119i/40024119.jpg',
-    isbn: '9781250301697',
-    description: 'Alicia Berenson’s life is seemingly perfect. One evening her husband Gabriel returns home late from a fashion shoot, and Alicia shoots him five times in the face, and then never speaks another word.',
-    userNotes: 'Whoa! Absolute page-turner. I literally read it in two massive late-night sittings. That twist at the very end completely caught me off guard. Highly recommend to anyone looking for a tight psychological puzzle!',
+    id: '1',
+    title: '嫌われる勇気',
+    author: '岸見一郎・古賀史健',
+    category: '自己啓発',
     rating: 5,
-    status: 'completed',
-    dateAdded: '2026-07-01',
-    dateStarted: '2026-07-01',
-    dateCompleted: '2026-07-03',
-    favorite: false,
-    keyQuotes: [
-      'We are all crazy, I believe, just in different ways.',
-      'An unexpressed emotion will never die.'
-    ]
+    memo: 'アドラー心理学の入門書。対人関係の悩みを根本から見直すきっかけになった。',
+    quote: '課題の分離ができるようになると、人生は劇的にシンプルになる。',
+    addedAt: '2024-01-15',
+    position: { x: 80, y: 85 },
+    quadrant: '励まされる × 思考を深める',
   },
   {
-    id: 'seed-3',
-    title: 'Atomic Habits',
-    author: 'James Clear',
-    genre: 'Self-Help',
-    cover: 'https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1655998315i/40121378.jpg',
-    isbn: '9780735211292',
-    description: 'No matter your goals, Atomic Habits offers a proven framework for improving—every day. James Clear, one of the world\'s leading experts on habit formation, reveals practical strategies.',
-    userNotes: 'Extremely practical workflow guidelines. The idea of "1% better every day" is so logical. Currently building a reading habit system using these rules: placing my current book right on my pillow every morning to trigger reading before bed!',
+    id: '2',
+    title: 'コンビニ人間',
+    author: '村田沙耶香',
+    category: '小説',
     rating: 4,
-    status: 'reading',
-    dateAdded: '2026-07-08',
-    dateStarted: '2026-07-08',
-    favorite: true,
-    keyQuotes: [
-      'You do not rise to the level of your goals. You fall to the level of your systems.',
-      'Every action you take is a vote for the type of person you wish to become.'
-    ]
-  }
+    memo: '「普通」とは何かを考えさせられる作品。独特な世界観に引き込まれた。',
+    quote: '私は世界の部品になりたかった。',
+    addedAt: '2024-02-01',
+    position: { x: 30, y: 75 },
+    quadrant: '静かに浸る × 思考を深める',
+  },
+  {
+    id: '3',
+    title: '心に折り合いをつけて うまいことやる習慣',
+    author: '中村恒子',
+    category: 'エッセイ',
+    rating: 5,
+    memo: '90歳の精神科医が語る人生の知恵。肩の力がすっと抜ける温かい一冊。',
+    quote: '人間関係は、付かず離れず、ほどほどの距離感が一番です。',
+    addedAt: '2024-02-20',
+    position: { x: 85, y: 25 },
+    quadrant: '励まされる × 心をほぐす',
+  },
 ];
 
-export default function App() {
-  const [library, setLibrary] = useState<Book[]>([]);
-  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
-  const [searchFilter, setSearchFilter] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | ReadingStatus | 'favorites'>('all');
-  const [sortBy, setSortBy] = useState<'dateAdded' | 'rating'>('dateAdded');
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  
-  // Custom reading target goals
-  const [readingGoal, setReadingGoal] = useState<number>(12);
-  const [goalEditing, setGoalEditing] = useState(false);
-
-  // Safe library accessor
-  const safeLibrary = Array.isArray(library) ? library : [];
-
-  // Load books from localStorage or seed initial logs on start
-  useEffect(() => {
-    const saved = localStorage.getItem('withbook_library');
+export function App() {
+  const [books, setBooks] = useState<Book[]>(() => {
+    const saved = localStorage.getItem('with_book_library');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        setLibrary(Array.isArray(parsed) ? parsed : INITIAL_LIBRARY_SEEDS);
+        return JSON.parse(saved);
       } catch (e) {
-        console.error('Failed to load library logs from storage', e);
-        setLibrary(INITIAL_LIBRARY_SEEDS);
+        console.error('Failed to parse saved books', e);
       }
-    } else {
-      setLibrary(INITIAL_LIBRARY_SEEDS);
-      localStorage.setItem('withbook_library', JSON.stringify(INITIAL_LIBRARY_SEEDS));
     }
+    return INITIAL_BOOKS;
+  });
 
-    // Load custom goal
-    const savedGoal = localStorage.getItem('withbook_reading_goal');
-    if (savedGoal) {
-      const parsed = parseInt(savedGoal, 10);
-      if (!isNaN(parsed)) setReadingGoal(parsed);
+  const [activeTab, setActiveTab] = useState<'shelf' | 'map'>('shelf');
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareBookId, setShareBookId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+
+  // Shared Link Import Banner state
+  const [sharedImportData, setSharedImportData] = useState<{
+    sender: string;
+    note: string;
+    books: Book[];
+  } | null>(null);
+  const [importSuccess, setImportSuccess] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('with_book_library', JSON.stringify(books));
+  }, [books]);
+
+  // Handle Share Link URL search params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shareData = params.get('share');
+    if (shareData) {
+      try {
+        const decoded = decodeURIComponent(atob(shareData));
+        const parsed = JSON.parse(decoded);
+        if (parsed && parsed.books && Array.isArray(parsed.books)) {
+          setSharedImportData({
+            sender: parsed.sender || '読書仲間',
+            note: parsed.note || '',
+            books: parsed.books,
+          });
+        }
+      } catch (e) {
+        console.error('Failed to decode share parameter', e);
+      }
     }
   }, []);
 
-  // Save changes helper
-  const saveLibraryState = (newLib: Book[]) => {
-    const validLib = Array.isArray(newLib) ? newLib : [];
-    setLibrary(validLib);
-    localStorage.setItem('withbook_library', JSON.stringify(validLib));
-  };
-
-  // Add Book action (triggered from scanner or manual search list)
-  const handleAddBook = (bookMeta: Omit<Book, 'id' | 'dateAdded' | 'userNotes' | 'rating' | 'status' | 'favorite'>) => {
-    const newBook: Book = {
-      ...bookMeta,
-      id: `book-${Date.now()}`,
-      status: 'to-read',
-      userNotes: '',
-      rating: 0,
-      favorite: false,
-      dateAdded: new Date().toISOString().split('T')[0],
-      keyQuotes: []
+  const handleAddBook = (newBook: Omit<Book, 'id' | 'addedAt'>) => {
+    const book: Book = {
+      ...newBook,
+      id: Date.now().toString(),
+      addedAt: new Date().toISOString().split('T')[0],
+      position: newBook.position || { x: 50, y: 50 },
     };
-    const updated = [newBook, ...safeLibrary];
-    saveLibraryState(updated);
-    setSelectedBook(newBook);
+    setBooks((prev) => [book, ...prev]);
+    setIsScannerOpen(false);
   };
 
-  // Add highly targeted recommended books
-  const handleAddRecommendation = (rec: AIRecommendation) => {
-    if (safeLibrary.some(b => b?.title?.toLowerCase() === rec?.title?.toLowerCase())) {
-      alert(`"${rec?.title}" is already in your reading log!`);
-      return;
-    }
-
-    const newBook: Book = {
-      id: `rec-${Date.now()}`,
-      title: rec?.title || 'Untitled',
-      author: rec?.author || 'Unknown Author',
-      genre: rec?.genre || 'General',
-      cover: '',
-      description: `Gemini recommended: "${rec?.reason || ''}"`,
-      userNotes: `Discovered via Gemini AI Suggestion: "Perfect for me because ${rec?.reason?.slice(0, 100) || ''}..."`,
-      rating: 0,
-      status: 'to-read',
-      favorite: false,
-      dateAdded: new Date().toISOString().split('T')[0],
-      keyQuotes: []
-    };
-    const updated = [newBook, ...safeLibrary];
-    saveLibraryState(updated);
-    setSelectedBook(newBook);
+  const handleUpdateBook = (updatedBook: Book) => {
+    setBooks((prev) => prev.map((b) => (b.id === updatedBook.id ? updatedBook : b)));
+    setSelectedBook(updatedBook);
   };
 
-  const handleAddNewRelease = (release: Omit<Book, 'id' | 'dateAdded'>) => {
-    const newBook: Book = {
-      ...release,
-      id: `release-${Date.now()}`,
-      dateAdded: new Date().toISOString().split('T')[0],
-      keyQuotes: Array.isArray(release?.keyQuotes) ? release.keyQuotes : []
-    };
-    const updated = [newBook, ...safeLibrary];
-    saveLibraryState(updated);
-    setSelectedBook(newBook);
-  };
-
-  // Save specific book updates inside the modal
-  const handleSaveBookDetails = (updatedBook: Book) => {
-    const updated = safeLibrary.map((b) => (b?.id === updatedBook?.id ? updatedBook : b));
-    saveLibraryState(updated);
-  };
-
-  // Delete book from logs
   const handleDeleteBook = (id: string) => {
-    const updated = safeLibrary.filter((b) => b?.id !== id);
-    saveLibraryState(updated);
-  };
-
-  // Handle Reading target goal update
-  const handleSaveGoal = (val: string) => {
-    const parsed = parseInt(val, 10);
-    if (!isNaN(parsed) && parsed > 0) {
-      setReadingGoal(parsed);
-      localStorage.setItem('withbook_reading_goal', parsed.toString());
+    if (window.confirm('この読書ログを削除しますか？')) {
+      setBooks((prev) => prev.filter((b) => b.id !== id));
+      setSelectedBook(null);
     }
-    setGoalEditing(false);
   };
 
-  // Calculate statistics
-  const totalBooks = safeLibrary.length;
-  const readingCount = safeLibrary.filter((b) => b?.status === 'reading').length;
-  const completedCount = safeLibrary.filter((b) => b?.status === 'completed').length;
-  const wishlistCount = safeLibrary.filter((b) => b?.status === 'to-read').length;
-  const favoriteCount = safeLibrary.filter((b) => b?.favorite).length;
+  const handleUpdatePosition = (id: string, position: Position2D, quadrant?: string) => {
+    setBooks((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, position, quadrant: quadrant || b.quadrant } : b))
+    );
+  };
 
-  // Filter & search criteria
-  const processedBooks = safeLibrary
-    .filter((book) => {
-      if (!book) return false;
-      if (activeTab === 'reading') return book.status === 'reading';
-      if (activeTab === 'to-read') return book.status === 'to-read';
-      if (activeTab === 'completed') return book.status === 'completed';
-      if (activeTab === 'favorites') return Boolean(book.favorite);
-      return true;
-    })
-    .filter((book) => {
-      const term = searchFilter.toLowerCase().trim();
-      if (!term) return true;
-      const matchQuotes = Array.isArray(book.keyQuotes) ? book.keyQuotes.some((q) => q?.toLowerCase().includes(term)) : false;
-      const matchDesc = book.description?.toLowerCase().includes(term);
-      return (
-        book.title?.toLowerCase().includes(term) ||
-        book.author?.toLowerCase().includes(term) ||
-        book.genre?.toLowerCase().includes(term) ||
-        (book.userNotes && book.userNotes.toLowerCase().includes(term)) ||
-        Boolean(matchQuotes) ||
-        Boolean(matchDesc)
-      );
-    })
-    .sort((a, b) => {
-      if (sortBy === 'rating') {
-        return (b?.rating || 0) - (a?.rating || 0);
-      }
-      return new Date(b?.dateAdded || 0).getTime() - new Date(a?.dateAdded || 0).getTime();
-    });
+  const handleImportSharedBooks = () => {
+    if (!sharedImportData) return;
+    
+    // Filter out books already exists by title and author
+    const existingKeys = new Set(books.map((b) => `${b.title}-${b.author}`));
+    const newBooksToAdd = sharedImportData.books
+      .filter((b) => !existingKeys.has(`${b.title}-${b.author}`))
+      .map((b) => ({
+        ...b,
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 4),
+        addedAt: new Date().toISOString().split('T')[0],
+      }));
+
+    if (newBooksToAdd.length > 0) {
+      setBooks((prev) => [...newBooksToAdd, ...prev]);
+      setImportSuccess(true);
+      setTimeout(() => setImportSuccess(false), 4000);
+    } else {
+      alert('すべての本がすでに本棚に登録されています！');
+    }
+  };
+
+  const categories = ['all', ...Array.from(new Set(books.map((b) => b.category).filter(Boolean)))];
+
+  const filteredBooks = books.filter((b) => {
+    const matchesSearch =
+      b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (b.memo && b.memo.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = filterCategory === 'all' || b.category === filterCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
-    <div id="app-container" className="min-h-screen flex flex-col max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 selection:bg-amber-500/30">
-      {/* Header section with brand typography */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#212429] pb-6 mb-8 gap-4">
-        <div>
-          <h1 className="font-sans font-light tracking-[0.2em] uppercase text-white text-2xl sm:text-3xl select-none flex items-center gap-1.5">
-            WITH <span className="font-bold italic text-amber-500">BOOK</span> <span className="text-xl">📚</span>
-          </h1>
-          <p className="text-[10px] uppercase tracking-widest text-[#6B7280] mt-1 sm:mt-1.5">
-            Scan. Reflect. Discover. — Your elegant personal reading companion.
-          </p>
-        </div>
-
-        {/* Dashboard Quick Stats */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-[#16191F] border border-[#212429] rounded-lg px-3 py-2 text-center shadow-md">
-            <span className="text-[9px] font-mono tracking-wider uppercase text-[#6B7280] block">
-              LOGGED
-            </span>
-            <span className="font-sans font-bold text-base text-white">
-              {totalBooks}
-            </span>
-          </div>
-          <div className="bg-[#16191F] border border-[#212429] rounded-lg px-3 py-2 text-center shadow-md">
-            <span className="text-[9px] font-mono tracking-wider uppercase text-[#6B7280] block">
-              READING
-            </span>
-            <span className="font-sans font-bold text-base text-amber-500">
-              {readingCount}
-            </span>
-          </div>
-          <div className="bg-[#16191F] border border-[#212429] rounded-lg px-3 py-2 text-center shadow-md">
-            <span className="text-[9px] font-mono tracking-wider uppercase text-[#6B7280] block">
-              COMPLETED
-            </span>
-            <span className="font-sans font-bold text-base text-emerald-500">
-              {completedCount}
-            </span>
-          </div>
-
-          {/* Gamified reading goal target tracking widget */}
-          <div className="bg-[#16191F] border border-[#212429] rounded-lg px-4 py-2 text-left shadow-md flex items-center gap-3 relative">
-            <Trophy className="w-5 h-5 text-amber-500 shrink-0" />
-            <div>
-              <span className="text-[8px] font-mono tracking-wider uppercase text-[#6B7280] block">
-                ANNUAL TARGET
-              </span>
-              <div className="flex items-center gap-1">
-                <span className="font-sans font-bold text-xs text-stone-300">
-                  {completedCount} /
-                </span>
-                {goalEditing ? (
-                  <input
-                    type="number"
-                    defaultValue={readingGoal}
-                    onBlur={(e) => handleSaveGoal(e.target.value)}
-                    onKeyDown={(e: any) => {
-                      if (e.key === 'Enter') handleSaveGoal(e.target.value);
-                    }}
-                    className="w-10 text-xs font-bold border border-[#212429] bg-[#0A0B0D] text-white rounded px-1 py-0.2 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                    autoFocus
-                  />
-                ) : (
-                  <button
-                    onClick={() => setGoalEditing(true)}
-                    className="font-sans font-bold text-xs text-white hover:text-amber-500 underline decoration-dotted decoration-[#6B7280]"
-                    title="Click to edit annual goal"
-                  >
-                    {readingGoal}
-                  </button>
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-24">
+      {/* Top Banner for Shared Logs */}
+      {sharedImportData && (
+        <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 text-white px-4 py-3 shadow-md relative">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-200 shrink-0 animate-pulse" />
+              <div>
+                <span className="font-bold">{sharedImportData.sender}</span> さんから読書ログ（
+                {sharedImportData.books.length}冊）が届いています！
+                {sharedImportData.note && (
+                  <span className="ml-2 text-amber-100 italic">「{sharedImportData.note}」</span>
                 )}
               </div>
             </div>
-            {/* Minimal Circular Goal progress percent */}
-            <div className="text-[10px] font-mono font-semibold text-[#9CA3AF] bg-[#212429] rounded-full px-1.5 py-0.5 ml-1">
-              {Math.min(100, Math.round((completedCount / (readingGoal || 1)) * 100))}%
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleImportSharedBooks}
+                className="px-3.5 py-1.5 bg-white text-amber-700 font-bold rounded-lg text-xs shadow hover:bg-amber-50 transition-colors flex items-center gap-1.5"
+              >
+                {importSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    本棚に追加しました！
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    自分の本棚に取り込む
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setSharedImportData(null)}
+                className="p-1 hover:bg-white/20 rounded-lg text-amber-100 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header Bar */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-500 text-white rounded-xl shadow-md shadow-amber-500/20">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="font-bold text-slate-900 text-lg leading-none">With Book</h1>
+              <p className="text-xs text-slate-400 mt-0.5">読書ログ・感情マッピング</p>
             </div>
           </div>
 
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="bg-[#16191F] hover:bg-[#212429] border border-[#212429] hover:border-amber-500/30 text-white rounded-lg p-2.5 shadow-md transition-colors"
-            title="Cloud Sync Settings"
-          >
-            <Cloud className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setShareBookId(null);
+                setIsShareModalOpen(true);
+              }}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold rounded-xl text-xs transition-colors border border-amber-200/60"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>ログを共有</span>
+            </button>
+
+            <GoogleDriveSync books={books} onSyncToApp={(syncedBooks) => setBooks(syncedBooks)} />
+
+            <button
+              onClick={() => setIsScannerOpen(true)}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl text-xs shadow-md shadow-amber-500/20 flex items-center gap-2 transition-transform active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>読書ログを追加</span>
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Main core interface grid */}
-      <main className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start flex-1 w-full">
-        {/* Left side panel: optical simulated scanner & AI Companion box */}
-        <section id="sidebar-controls" className="lg:col-span-4 order-2 lg:order-2 space-y-6 flex flex-col w-full">
-          {/* AI Advisor Box */}
-          <AIRecommendCard library={safeLibrary} onAddRecommendation={handleAddRecommendation} />
-
-          {/* Scanner & Keyword Lookup */}
-          <ScannerAndSearch library={safeLibrary} onAddBook={handleAddBook} />
-
-          {/* Quick instructions manual */}
-          <div className="bg-[#16191F]/60 border border-[#212429] p-4 rounded-xl flex gap-3 text-[#9CA3AF] text-xs leading-relaxed">
-            <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-serif italic text-white font-medium mb-1">
-                Reflections nourish recommendations
-              </p>
-              Your journal is offline-first. Record ratings, favorite quotes, and detailed reactions in your logs. The Gemini Oracle uses these specific journal reflections to make highly personalized read recommendations.
-            </div>
+      {/* Main Container */}
+      <main className="max-w-6xl mx-auto px-4 pt-6 space-y-8">
+        
+        {/* Top Feature Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
+            <AIRecommendCard books={books} />
           </div>
-        </section>
-
-        {/* Right side reading log lists / grid logs */}
-        <section id="library-catalog" className="lg:col-span-8 order-1 lg:order-1 space-y-6 w-full">
-          {/* Favorite Authors' New Releases Tracker */}
-          <FavoriteAuthorReleases library={safeLibrary} onAddBook={handleAddNewRelease} />
-
-          {/* Filtering bar and Sorting options */}
-          <div className="bg-[#0F1115] border border-[#212429] rounded-xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 shadow-md">
-            {/* Quick Filter Tabs */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                onClick={() => setActiveTab('all')}
-                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all ${
-                  activeTab === 'all'
-                    ? 'bg-amber-500 text-black font-bold'
-                    : 'bg-transparent text-[#9CA3AF] hover:bg-[#16191F] hover:text-white'
-                }`}
-              >
-                All ({totalBooks})
-              </button>
-              <button
-                onClick={() => setActiveTab('reading')}
-                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1 ${
-                  activeTab === 'reading'
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold'
-                    : 'bg-transparent text-[#9CA3AF] hover:bg-[#16191F] hover:text-white'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" /> Reading ({readingCount})
-              </button>
-              <button
-                onClick={() => setActiveTab('to-read')}
-                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1 ${
-                  activeTab === 'to-read'
-                    ? 'bg-zinc-800 text-white border border-[#212429]'
-                    : 'bg-transparent text-[#9CA3AF] hover:bg-[#16191F] hover:text-white'
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5" /> To Read ({wishlistCount})
-              </button>
-              <button
-                onClick={() => setActiveTab('completed')}
-                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1 ${
-                  activeTab === 'completed'
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold'
-                    : 'bg-transparent text-[#9CA3AF] hover:bg-[#16191F] hover:text-white'
-                }`}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" /> Done ({completedCount})
-              </button>
-              <button
-                onClick={() => setActiveTab('favorites')}
-                className={`px-3 py-1.5 text-xs font-sans font-semibold rounded-lg transition-all flex items-center gap-1 ${
-                  activeTab === 'favorites'
-                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold'
-                    : 'bg-transparent text-[#9CA3AF] hover:bg-[#16191F] hover:text-white'
-                }`}
-              >
-                <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-500/30" /> Favorites ({favoriteCount})
-              </button>
-            </div>
-
-            {/* In-tab dynamic Text filter search & Sorting dropdown */}
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 sm:w-44">
-                <Search className="absolute left-2.5 top-2.2 w-3.5 h-3.5 text-[#6B7280]" />
-                <input
-                  type="text"
-                  placeholder="Filter logs..."
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  className="w-full pl-8 pr-2 py-1.5 text-xs border border-[#212429] rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 font-sans bg-[#16191F] text-white"
-                />
-              </div>
-              <select
-                value={sortBy}
-                onChange={(e: any) => setSortBy(e.target.value)}
-                className="text-xs bg-[#16191F] hover:bg-[#1f232b] text-[#E0E2E6] border border-[#212429] rounded-lg py-1.5 px-2.5 font-sans focus:outline-none cursor-pointer"
-              >
-                <option value="dateAdded">Sort: Newest</option>
-                <option value="rating">Sort: Best Rating</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Book Catalog list/grid visualization */}
-          {processedBooks?.length === 0 ? (
-            <div className="text-center py-24 bg-[#0F1115] border border-dashed border-[#212429] rounded-xl flex flex-col items-center justify-center p-8">
-              <BookMarked className="w-12 h-12 text-[#4B5563] mb-3" />
-              <h3 className="font-serif font-semibold text-lg text-white tracking-tight">
-                No matching journal logs
-              </h3>
-              <p className="text-[#6B7280] text-xs mt-1 max-w-sm font-sans">
-                {searchFilter ? 'We couldn’t find any books matching those keywords. Try refining your filters.' : 'This tab is empty! Add a book via simulated barcode scans or query any title to populate your library.'}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {processedBooks.map((book) => (
-                <div
-                  key={book.id}
-                  onClick={() => setSelectedBook(book)}
-                  className="flex bg-[#16191F] rounded-xl border border-[#212429] hover:border-amber-500/50 hover:shadow-lg p-4 gap-4 transition-all duration-200 cursor-pointer group relative overflow-hidden"
-                >
-                  {/* Heart button indicator */}
-                  {book.favorite && (
-                    <div className="absolute top-3 right-3 text-rose-500 animate-pulse z-10">
-                      <Heart className="w-3.5 h-3.5 fill-rose-500" />
-                    </div>
-                  )}
-
-                  <div className="shrink-0">
-                    <BookCover
-                      title={book.title}
-                      author={book.author}
-                      genre={book.genre}
-                      isbn={book.isbn}
-                      size="md"
-                    />
-                  </div>
-
-                  <div className="flex-1 flex flex-col justify-between overflow-hidden min-h-[160px]">
-                    <div>
-                      {/* Badge and Star rating rows */}
-                      <div className="flex items-center justify-between gap-1">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider ${
-                            book.status === 'completed'
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                              : book.status === 'reading'
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              : 'bg-zinc-800 text-stone-300 border border-[#212429]'
-                          }`}
-                        >
-                          {book.status === 'completed' ? 'Done' : book.status === 'reading' ? 'Reading' : 'To Read'}
-                        </span>
-
-                        {(book.rating || 0) > 0 && (
-                          <div className="flex items-center gap-0.5 text-amber-500">
-                            {Array.from({ length: book.rating || 0 }).map((_, i) => (
-                              <Star key={i} className="w-3 h-3 fill-amber-500 text-amber-500" />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Info header */}
-                      <h3 className="font-serif font-bold text-white tracking-tight leading-snug mt-2 text-base truncate group-hover:text-amber-500 transition-colors">
-                        <HighlightText text={book.title || ''} highlight={searchFilter} />
-                      </h3>
-                      <p className="text-xs text-[#6B7280] font-sans mt-0.5 truncate">
-                        by <HighlightText text={book.author || ''} highlight={searchFilter} />
-                      </p>
-                    </div>
-
-                    {/* Book reactions journal snippet preview */}
-                    <div className="mt-3 text-[11px] font-serif leading-relaxed text-[#9CA3AF] italic border-l border-[#212429] pl-2 line-clamp-3">
-                      {book.userNotes ? (
-                        <HighlightText text={book.userNotes} highlight={searchFilter} />
-                      ) : (
-                        'No journal reflections written yet. Tap to record thoughts, star ratings, and quotes!'
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
-
-      {/* Floating Chat Corner */}
-      <ChatCorner library={safeLibrary} />
-
-      {/* Detailed Edit & Notes Modal */}
-      {selectedBook && (
-        <BookDetailModal
-          book={selectedBook}
-          onClose={() => setSelectedBook(null)}
-          onSave={handleSaveBookDetails}
-          onDelete={handleDeleteBook}
-        />
-      )}
-
-      {/* Cloud Sync Settings Modal */}
-      {isSettingsOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#16191F] border border-[#212429] rounded-2xl max-w-lg w-full p-6 space-y-6 shadow-2xl relative">
-            <div className="flex items-center justify-between border-b border-[#212429] pb-4">
-              <h2 className="font-serif text-lg font-bold text-white flex items-center gap-2">
-                <Cloud className="w-5 h-5 text-amber-500" />
-                Backup & Cloud Sync
-              </h2>
-              <button
-                onClick={() => setIsSettingsOpen(false)}
-                className="text-[#6B7280] hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <GoogleDriveSync library={safeLibrary} onSync={saveLibraryState} />
+          <div>
+            <FavoriteAuthorReleases books={books} />
           </div>
         </div>
-      )}
+
+        {/* View Switcher & Filter Bar */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          
+          {/* Tabs */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+            <button
+              onClick={() => setActiveTab('shelf')}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'shelf'
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              <span>本棚グリッド ({books.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('map')}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'map'
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <MapPin className="w-4 h-4" />
+              <span>感情ポジショニングマップ</span>
+            </button>
+          </div>
+
+          {/* Search & Category Filter */}
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-60">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="タイトル・著者名で検索..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c === 'all' ? 'すべてのカテゴリ' : c}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => {
+                setShareBookId(null);
+                setIsShareModalOpen(true);
+              }}
+              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors sm:hidden"
+              title="ログを共有"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Dynamic Main View Content */}
+        {activeTab === 'shelf' ? (
+          <div>
+            {filteredBooks.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
+                <BookMarked className="w-12 h-12 text-slate-300 mx-auto" />
+                <p className="text-slate-500 text-sm font-medium">該当する読書ログが見つかりません</p>
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setFilterCategory('all');
+                  }}
+                  className="text-xs text-amber-600 font-semibold hover:underline"
+                >
+                  検索条件をリセット
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {filteredBooks.map((book) => (
+                  <div
+                    key={book.id}
+                    onClick={() => setSelectedBook(book)}
+                    className="group bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden"
+                  >
+                    <div>
+                      <div className="aspect-[3/4] w-full mb-3 rounded-lg overflow-hidden shadow-sm">
+                        <BookCover title={book.title} author={book.author} coverUrl={book.coverUrl} />
+                      </div>
+                      <h3 className="font-bold text-slate-800 text-xs line-clamp-2 leading-snug group-hover:text-amber-600 transition-colors">
+                        {book.title}
+                      </h3>
+                      <p className="text-[11px] text-slate-400 truncate mt-0.5">{book.author}</p>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                      <span className="font-semibold text-amber-500">★ {book.rating}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShareBookId(book.id);
+                          setIsShareModalOpen(true);
+                        }}
+                        className="p-1 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                        title="この本を共有"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <BookPositioningMap
+            books={books}
+            onSelectBook={(book) => setSelectedBook(book)}
+            onUpdatePosition={handleUpdatePosition}
+          />
+        )}
+      </main>
+
+      {/* Floating Interactive Chat Corner */}
+      <ChatCorner books={books} />
+
+      {/* Modals */}
+      <ScannerAndSearch
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onAddBook={handleAddBook}
+      />
+
+      <BookDetailModal
+        book={selectedBook}
+        isOpen={!!selectedBook}
+        onClose={() => setSelectedBook(null)}
+        onUpdate={handleUpdateBook}
+        onDelete={handleDeleteBook}
+        onOpenShare={(bookId) => {
+          setShareBookId(bookId);
+          setIsShareModalOpen(true);
+        }}
+      />
+
+      <ShareLogsModal
+        isOpen={isShareModalOpen}
+        onClose={() => {
+          setIsShareModalOpen(false);
+          setShareBookId(null);
+        }}
+        books={books}
+        selectedBookId={shareBookId}
+      />
     </div>
   );
 }
