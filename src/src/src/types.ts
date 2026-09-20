@@ -5,6 +5,14 @@
 
 export type ReadingStatus = 'to-read' | 'reading' | 'completed';
 
+export interface BookFeelings {
+  happiness: number; // -100 to 100 (Somber/Serious ↔ Happy/Joyful/Uplifting)
+  impressed: number; // -100 to 100 (Casual/Lighthearted ↔ Deeply Impressed/Profound)
+  tags?: string[];   // e.g. ["Happy", "Impressed", "Inspiring", "Tear-jerker"]
+  hashtags?: string[]; // e.g. ["#Heartwarming", "#DeeplyMoved", "#MindBending", "#CozyRead"]
+  summary?: string;  // Gemini's distilled feeling breakdown from reactions & notes
+}
+
 export interface Book {
   id: string;
   title: string;
@@ -21,6 +29,7 @@ export interface Book {
   dateCompleted?: string;
   keyQuotes?: string[];
   favorite: boolean;
+  feelings?: BookFeelings;
 }
 
 export interface AIRecommendation {
