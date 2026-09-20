@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { Book } from '../types';
-import { X, Copy, Check, Share2, Sparkles, BookOpen, User, Send, CheckCircle2 } from 'lucide-react';
+import {
+  X,
+  Copy,
+  Check,
+  Share2,
+  Sparkles,
+  BookOpen,
+  User,
+  Send,
+  CheckCircle2
+} from 'lucide-react';
 
 interface ShareLogsModalProps {
   isOpen: boolean;
@@ -13,10 +23,14 @@ export const ShareLogsModal: React.FC<ShareLogsModalProps> = ({
   isOpen,
   onClose,
   books,
-  selectedBookId = null,
+  selectedBookId = null
 }) => {
-  const [shareScope, setShareScope] = useState<'library' | 'single'>(selectedBookId ? 'single' : 'library');
-  const [activeBookId, setActiveBookId] = useState<string>(selectedBookId || (books[0]?.id || ''));
+  const [shareScope, setShareScope] = useState<'library' | 'single'>(
+    selectedBookId ? 'single' : 'library'
+  );
+  const [activeBookId, setActiveBookId] = useState<string>(
+    selectedBookId || books[0]?.id || ''
+  );
   const [userName, setUserName] = useState('');
   const [note, setNote] = useState('');
   const [copied, setCopied] = useState(false);
@@ -24,7 +38,7 @@ export const ShareLogsModal: React.FC<ShareLogsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const targetBook = books.find(b => b.id === activeBookId) || books[0];
+  const targetBook = books.find((b) => b.id === activeBookId) || books[0];
 
   const generateShareData = () => {
     const payload = {
@@ -33,11 +47,9 @@ export const ShareLogsModal: React.FC<ShareLogsModalProps> = ({
       sender: userName.trim() || '読書好きの仲間',
       note: note.trim(),
       timestamp: new Date().toISOString(),
-      books: shareScope === 'single' && targetBook ? [targetBook] : books,
+      books: shareScope === 'single' && targetBook ? [targetBook] : books
     };
-
     const jsonString = JSON.stringify(payload);
-    // Base64 encode for simple URL sharing
     const encoded = btoa(encodeURIComponent(jsonString));
     const shareUrl = `${window.location.origin}${window.location.pathname}?share=${encoded}`;
     return { payload, shareUrl };
@@ -46,7 +58,7 @@ export const ShareLogsModal: React.FC<ShareLogsModalProps> = ({
   const generateSummaryText = () => {
     const sender = userName.trim() || '読書仲間';
     if (shareScope === 'single' && targetBook) {
-      return `📚 【${sender}のおすすめ読書記録】\n『${targetBook.title}』(${targetBook.author})\n評価: ${'★'.repeat(targetBook.rating)}${'☆'.repeat(5 - targetBook.rating)}\n${targetBook.memo ? `💬 感想: "${targetBook.memo}"\n` : ''}${note ? `📝 メッセージ: ${note}\n` : ''}\n#WithBook #読書記録`;
+      return `📚 【${sender}のおすすめ読書記録】\n『${targetBook.title}』(${targetBook.author})\n評価: ${'★'.repeat(targetBook.rating)}${'☆'.repeat(5 - targetBook.rating)}\n${targetBook.userNotes ? `💬 感想: "${targetBook.userNotes}"\n` : ''}${note ? `📝 メッセージ: ${note}\n` : ''}\n#WithBook #読書記録`;
     }
     return `📚 【${sender}の読書ライブラリ Passport】\n合計 ${books.length} 冊の読書ログを共有しました！\n${note ? `📝 メッセージ: ${note}\n` : ''}\n#WithBook #読書記録`;
   };
@@ -73,7 +85,7 @@ export const ShareLogsModal: React.FC<ShareLogsModalProps> = ({
         await navigator.share({
           title: 'With Book 読書ログ共有',
           text: text,
-          url: shareUrl,
+          url: shareUrl
         });
       } catch (e) {
         console.error('Share failed', e);
@@ -86,7 +98,6 @@ export const ShareLogsModal: React.FC<ShareLogsModalProps> = ({
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-amber-50/50">
           <div className="flex items-center gap-2">
@@ -107,8 +118,7 @@ export const ShareLogsModal: React.FC<ShareLogsModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
-          
+        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800">
           {/* Scope Selector */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
@@ -203,14 +213,13 @@ export const ShareLogsModal: React.FC<ShareLogsModalProps> = ({
                 <span>読書パスポート ID: #{Math.floor(Math.random() * 8999 + 1000)}</span>
                 <span>{userName.trim() || '読書仲間'} からのシェア</span>
               </div>
-
               {shareScope === 'single' && targetBook ? (
                 <div className="pt-2">
                   <div className="font-bold text-slate-800">{targetBook.title}</div>
                   <div className="text-xs text-slate-500">{targetBook.author}</div>
-                  {targetBook.memo && (
+                  {targetBook.userNotes && (
                     <p className="mt-2 text-xs italic text-slate-600 bg-slate-50 p-2 rounded border border-slate-100">
-                      "{targetBook.memo}"
+                      "{targetBook.userNotes}"
                     </p>
                   )}
                 </div>
@@ -222,16 +231,13 @@ export const ShareLogsModal: React.FC<ShareLogsModalProps> = ({
                   </div>
                 </div>
               )}
-
               {note && (
                 <div className="text-xs text-slate-600 pt-1 border-t border-slate-100">
-                  <span className="font-semibold text-slate-700">メッセージ: </span>
-                  {note}
+                  <span className="font-semibold text-slate-700">メッセージ: </span> {note}
                 </div>
               )}
             </div>
           </div>
-
         </div>
 
         {/* Footer Actions */}
@@ -252,20 +258,19 @@ export const ShareLogsModal: React.FC<ShareLogsModalProps> = ({
               {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copied ? 'リンクをコピーしました' : '共有リンクを発行してコピー'}
             </button>
-
             {typeof navigator !== 'undefined' && 'share' in navigator && (
               <button
                 onClick={handleNativeShare}
                 className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium text-xs flex items-center gap-2 transition-colors shadow-sm"
               >
-                <Share2 className="w-4 h-4" />
-                シェアする
+                <Share2 className="w-4 h-4" /> シェアする
               </button>
             )}
           </div>
         </div>
-
       </div>
     </div>
   );
 };
+
+export default ShareLogsModal;
