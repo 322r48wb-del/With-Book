@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import express from 'express';
+import express, { Request, Response } from 'express';
 import path from 'path';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
@@ -11,12 +11,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json());
+// リクエストボディの制限量を拡張 (画像データや大きなログ共有に対応)
+app.use(express.json({ limit: '10mb' }));
 
 // Google OAuth URL Endpoint
-app.get('/api/auth/google/url', (req, res) => {
+app.get('/api/auth/google/url', (req: Request, res: Response) => {
   const clientId = process.env.GOOGLE_CLIENT_ID || '';
   const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
   
@@ -42,7 +43,7 @@ app.get('/api/auth/google/url', (req, res) => {
 });
 
 // OAuth Callback static handler
-app.get(['/auth/callback', '/auth/callback/'], (req, res) => {
+app.get(['/auth/callback', '/auth/callback/'], (_req: Request, res: Response) => {
   res.send(`
     <!DOCTYPE html>
     <html>
@@ -143,7 +144,7 @@ function getGeminiClient(): GoogleGenAI {
 }
 
 // Endpoint: Check AI status and configuration
-app.get('/api/ai/status', (req, res) => {
+app.get('/api/ai/status', (_req: Request, res: Response) => {
   res.json({
     geminiConfigured: hasGeminiKey(),
     model: 'gemini-3.8-flash',
@@ -164,13 +165,12 @@ interface SharedLogRecord {
 const sharedLogsStore = new Map<string, SharedLogRecord>();
 
 // Endpoint: Create a shareable reading log bundle
-app.post('/api/share', (req, res) => {
+app.post('/api/share', (req: Request, res: Response) => {
   try {
     const { books, readingGoal, readerName, shareNote, singleBookId } = req.body;
 
     if (!Array.isArray(books) || books.length === 0) {
-      res.status(400).json({ error: 'At least one book log is required to share' });
-      return;
+      return res.status(400).json({ error: 'At least one book log is required to share' });
     }
 
     // Limit maximum stored items to prevent memory leaks
@@ -195,7 +195,7 @@ app.post('/api/share', (req, res) => {
     const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
     const shareUrl = `${appUrl}?share=${shareId}`;
 
-    res.json({
+    return res.json({
       success: true,
       shareId,
       shareUrl,
@@ -203,21 +203,20 @@ app.post('/api/share', (req, res) => {
     });
   } catch (error: any) {
     console.error('Share Creation Error:', error);
-    res.status(500).json({ error: 'Failed to create shareable link' });
+    return res.status(500).json({ error: 'Failed to create shareable link' });
   }
 });
 
 // Endpoint: Fetch a shared reading log bundle by ID
-app.get('/api/share/:id', (req, res) => {
+app.get('/api/share/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const record = sharedLogsStore.get(id);
 
   if (!record) {
-    res.status(404).json({ error: 'Shared reading log not found or link has expired' });
-    return;
+    return res.status(404).json({ error: 'Shared reading log not found or link has expired' });
   }
 
-  res.json({
+  return res.json({
     success: true,
     record,
   });
@@ -308,12 +307,11 @@ const CURATED_BOOK_CATALOG = [
 ];
 
 // Endpoint 1: Search books via Gemini for structured metadata
-app.post('/api/books/search', async (req, res) => {
+app.post('/api/books/search', async (req: Request, res: Response) => {
   try {
     const { query } = req.body;
     if (!query || typeof query !== 'string') {
-      res.status(400).json({ error: 'Query is required and must be a string' });
-      return;
+      return res.status(400).json({ error: 'Query is required and must be a string' });
     }
 
     if (hasGeminiKey()) {
@@ -350,8 +348,7 @@ For each book, provide the title, author, a suitable main genre, a short captiva
         const text = response.text;
         if (text) {
           const books = JSON.parse(text);
-          res.json({ books, isPreview: false });
-          return;
+          return res.json({ books, isPreview: false });
         }
       } catch (geminiError: any) {
         console.warn('Gemini search encountered an issue, using curated catalog fallback:', geminiError?.message || geminiError);
@@ -368,31 +365,28 @@ For each book, provide the title, author, a suitable main genre, a short captiva
     );
 
     const books = matched.length > 0 ? matched : CURATED_BOOK_CATALOG.slice(0, 5);
-    res.json({ books, isPreview: !hasGeminiKey() });
+    return res.json({ books, isPreview: !hasGeminiKey() });
   } catch (error: any) {
     console.error('Book Search Error:', error);
-    res.status(500).json({ error: error.message || 'Failed to search books' });
+    return res.status(500).json({ error: error.message || 'Failed to search books' });
   }
 });
 
 // Endpoint 2: Generate dynamic AI Next Read recommendation
-app.post('/api/ai/recommend', async (req, res) => {
+app.post('/api/ai/recommend', async (req: Request, res: Response) => {
   try {
     const { library } = req.body;
 
     if (!library || !Array.isArray(library)) {
-      res.status(400).json({ error: 'Library array is required' });
-      return;
+      return res.status(400).json({ error: 'Library array is required' });
     }
 
     if (library.length === 0) {
-      res.status(400).json({ error: 'Library cannot be empty for AI recommendations' });
-      return;
+      return res.status(400).json({ error: 'Library cannot be empty for AI recommendations' });
     }
 
     if (hasGeminiKey()) {
       try {
-        // Format the reading log into a concise text prompt for Gemini
         const formattedLibrary = library.map((book: any, idx: number) => {
           return `${idx + 1}. "${book.title}" by ${book.author} (Genre: ${book.genre}, Status: ${book.status}, Rating: ${book.rating}/5 stars)
 User Journal Notes: "${book.userNotes || 'No notes yet'}"`;
@@ -436,8 +430,7 @@ Generate a book recommendation with title, author, genre, estimated page count, 
         const text = response.text;
         if (text) {
           const recommendation = JSON.parse(text);
-          res.json({ recommendation, isPreview: false });
-          return;
+          return res.json({ recommendation, isPreview: false });
         }
       } catch (geminiErr: any) {
         console.warn('Gemini recommendation encountered an issue, using intelligent fallback:', geminiErr?.message || geminiErr);
@@ -451,7 +444,7 @@ Generate a book recommendation with title, author, genre, estimated page count, 
     for (const b of library) {
       const g = (b.genre || 'General').trim();
       genreCounts[g] = (genreCounts[g] || 0) + (b.rating || 3);
-      if ((b.rating || 0) > (highestRatedBook.rating || 0)) {
+      if ((b.rating || 0) > (highestRatedBook?.rating || 0)) {
         highestRatedBook = b;
       }
     }
@@ -468,24 +461,23 @@ Generate a book recommendation with title, author, genre, estimated page count, 
       genre: chosen.genre,
       mood: 'Engaging & Profound',
       estimatedPageCount: chosen.pageCount,
-      reason: `Based on your high enjoyment of "${highestRatedBook.title}" by ${highestRatedBook.author}, "${chosen.title}" provides a masterfully balanced reading experience with tight narrative momentum, memorable character arcs, and deep thematic resonance.`,
+      reason: `Based on your high enjoyment of "${highestRatedBook?.title || 'your recent reads'}" by ${highestRatedBook?.author || 'author'}, "${chosen.title}" provides a masterfully balanced reading experience with tight narrative momentum, memorable character arcs, and deep thematic resonance.`,
     };
 
-    res.json({ recommendation, isPreview: !hasGeminiKey() });
+    return res.json({ recommendation, isPreview: !hasGeminiKey() });
   } catch (error: any) {
     console.error('AI Recommendation Error:', error);
-    res.status(500).json({ error: error.message || 'Failed to analyze library' });
+    return res.status(500).json({ error: error.message || 'Failed to analyze library' });
   }
 });
 
 // Endpoint 3: Find favorite author's new releases with Google Search grounding
-app.post('/api/ai/favorite-author-releases', async (req, res) => {
+app.post('/api/ai/favorite-author-releases', async (req: Request, res: Response) => {
   try {
     const { authors } = req.body;
 
     if (!authors || !Array.isArray(authors) || authors.length === 0) {
-      res.status(400).json({ error: 'At least one author name is required' });
-      return;
+      return res.status(400).json({ error: 'At least one author name is required' });
     }
 
     const authorsList = authors.slice(0, 3).join(', ');
@@ -534,8 +526,7 @@ Return up to 4 real books in a structured list. For each book, provide the title
         const text = response.text;
         if (text) {
           const data = JSON.parse(text);
-          res.json({ ...data, isPreview: false });
-          return;
+          return res.json({ ...data, isPreview: false });
         }
       } catch (geminiErr: any) {
         console.warn('Gemini search grounding encountered an issue, using fallback:', geminiErr?.message || geminiErr);
@@ -576,21 +567,20 @@ Return up to 4 real books in a structured list. For each book, provide the title
       }
     ];
 
-    res.json({ releases: fallbackReleases, isPreview: !hasGeminiKey() });
+    return res.json({ releases: fallbackReleases, isPreview: !hasGeminiKey() });
   } catch (error: any) {
     console.error('Favorite Author Releases Error:', error);
-    res.status(500).json({ error: error.message || 'Failed to search new releases' });
+    return res.status(500).json({ error: error.message || 'Failed to search new releases' });
   }
 });
 
 // Endpoint: Distinguish feelings & generate hashtags from reactions & notes using Gemini
-app.post('/api/ai/analyze-feelings', async (req, res) => {
+app.post('/api/ai/analyze-feelings', async (req: Request, res: Response) => {
   try {
     const { title, author, genre, userNotes, rating, keyQuotes } = req.body;
 
     if (!title) {
-      res.status(400).json({ error: 'Book title is required' });
-      return;
+      return res.status(400).json({ error: 'Book title is required' });
     }
 
     if (hasGeminiKey()) {
@@ -667,8 +657,7 @@ Also:
             return clean.startsWith('#') ? clean : `#${clean}`;
           });
 
-          res.json({ feelings: feelingsData, isPreview: false });
-          return;
+          return res.json({ feelings: feelingsData, isPreview: false });
         }
       } catch (geminiErr: any) {
         console.warn('Gemini feeling analysis encountered an issue, using sentiment heuristics:', geminiErr?.message || geminiErr);
@@ -714,26 +703,24 @@ Also:
       tags
     };
 
-    res.json({ feelings: feelingsData, isPreview: !hasGeminiKey() });
+    return res.json({ feelings: feelingsData, isPreview: !hasGeminiKey() });
   } catch (error: any) {
     console.error('Analyze Feelings Error:', error);
-    res.status(500).json({ error: error.message || 'Failed to analyze feelings with Gemini' });
+    return res.status(500).json({ error: error.message || 'Failed to analyze feelings with Gemini' });
   }
 });
 
 // Endpoint 4: Interactive chat about book reflections with Gemini
-app.post('/api/ai/chat', async (req, res) => {
+app.post('/api/ai/chat', async (req: Request, res: Response) => {
   try {
     const { messages, book } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
-      res.status(400).json({ error: 'Messages array is required' });
-      return;
+      return res.status(400).json({ error: 'Messages array is required' });
     }
 
     if (hasGeminiKey()) {
       try {
-        // Prepare custom system instruction based on book context
         let systemInstruction = 'You are a warm, extremely well-read, and insightful literary companion named Gemini.';
         if (book) {
           systemInstruction += ` You are currently discussing the book "${book.title}" by ${book.author} with the user.`;
@@ -754,11 +741,9 @@ app.post('/api/ai/chat', async (req, res) => {
           systemInstruction += ` Help the user explore their thoughts, feelings, and reactions to various books in their library. Ask thoughtful questions, share warm literary insights, and be a wonderful conversational partner.`;
         }
 
-        // Filter out any leading assistant/model messages because Gemini API multi-turn conversations must start with a user message.
         const firstUserIndex = messages.findIndex((m: any) => m.role === 'user');
         const filteredMessages = firstUserIndex !== -1 ? messages.slice(firstUserIndex) : messages;
 
-        // Convert frontend message array to @google/genai compatible contents format
         const contents = filteredMessages.map((m: any) => ({
           role: m.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: m.content }]
@@ -774,8 +759,7 @@ app.post('/api/ai/chat', async (req, res) => {
         });
 
         const reply = response.text || "I'm listening and thinking, but I couldn't generate a response. Tell me more about what you felt!";
-        res.json({ reply, isPreview: false });
-        return;
+        return res.json({ reply, isPreview: false });
       } catch (geminiErr: any) {
         console.warn('Gemini chat encountered an issue, providing companion response:', geminiErr?.message || geminiErr);
       }
@@ -808,10 +792,10 @@ app.post('/api/ai/chat', async (req, res) => {
       reply += `\n\n*(Gemini Companion is running in preview mode. To unlock live AI reasoning with Gemini 3.8 Flash, connect your GEMINI_API_KEY in the Settings > Secrets panel of AI Studio!)*`;
     }
 
-    res.json({ reply, isPreview: !hasGeminiKey() });
+    return res.json({ reply, isPreview: !hasGeminiKey() });
   } catch (error: any) {
     console.error('Gemini Chat Error:', error);
-    res.status(500).json({ error: error.message || 'Failed to generate chat response' });
+    return res.status(500).json({ error: error.message || 'Failed to generate chat response' });
   }
 });
 
@@ -827,7 +811,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*', (_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
