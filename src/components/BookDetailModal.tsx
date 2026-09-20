@@ -1,226 +1,218 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-import React, { useState, useEffect } from 'react';
-import { X, Heart, Star, Calendar, MessageSquare, Quote, Trash2 } from 'lucide-react';
-import { Book, ReadingStatus } from '../types';
-import BookCover from './BookCover';
+import React, { useState } from 'react';
+import { Book } from '../types';
+import { X, Star, Trash2, Edit2, Check, Sparkles, BookOpen, Quote, Share2 } from 'lucide-react';
+import { BookCover } from './BookCover';
 
 interface BookDetailModalProps {
-  book: Book;
+  book: Book | null;
+  isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedBook: Book) => void;
-  onDelete: (bookId: string) => void;
+  onUpdate: (updatedBook: Book) => void;
+  onDelete: (id: string) => void;
+  onOpenShare?: (bookId: string) => void;
 }
 
-export default function BookDetailModal({ book, onClose, onSave, onDelete }: BookDetailModalProps) {
-  const [status, setStatus] = useState<ReadingStatus>(book?.status || 'to-read');
-  const [rating, setRating] = useState<number>(book?.rating || 0);
-  const [hoverRating, setHoverRating] = useState<number>(0);
-  const [userNotes, setUserNotes] = useState<string>(book?.userNotes || '');
-  const [favorite, setFavorite] = useState<boolean>(book?.favorite || false);
-  const [dateStarted, setDateStarted] = useState<string>(book?.dateStarted || '');
-  const [dateCompleted, setDateCompleted] = useState<string>(book?.dateCompleted || '');
+export const BookDetailModal: React.FC<BookDetailModalProps> = ({
+  book,
+  isOpen,
+  onClose,
+  onUpdate,
+  onDelete,
+  onOpenShare,
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedBook, setEditedBook] = useState<Book | null>(null);
 
-  const [quotes, setQuotes] = useState<string[]>(Array.isArray(book?.keyQuotes) ? book.keyQuotes : []);
-  const [newQuote, setNewQuote] = useState<string>('');
-
-  useEffect(() => {
-    if (book) {
-      setStatus(book.status || 'to-read');
-      setRating(book.rating || 0);
-      setUserNotes(book.userNotes || '');
-      setFavorite(book.favorite || false);
-      setDateStarted(book.dateStarted || '');
-      setDateCompleted(book.dateCompleted || '');
-      setQuotes(Array.isArray(book.keyQuotes) ? book.keyQuotes : []);
-    }
+  React.useEffect(() => {
+    setEditedBook(book);
+    setIsEditing(false);
   }, [book]);
 
+  if (!isOpen || !book || !editedBook) return null;
+
   const handleSave = () => {
-    if (!book) return;
-    onSave({
-      ...book,
-      status,
-      rating,
-      userNotes,
-      favorite,
-      dateStarted,
-      dateCompleted,
-      keyQuotes: quotes
-    });
-    onClose();
+    onUpdate(editedBook);
+    setIsEditing(false);
   };
 
-  const handleAddQuote = () => {
-    if (newQuote.trim()) {
-      setQuotes([...quotes, newQuote.trim()]);
-      setNewQuote('');
-    }
+  const handleRatingChange = (rating: number) => {
+    setEditedBook({ ...editedBook, rating });
   };
-
-  const handleRemoveQuote = (index: number) => {
-    setQuotes(quotes.filter((_, i) => i !== index));
-  };
-
-  if (!book) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="p-6 border-b border-slate-800 flex justify-between items-start sticky top-0 bg-slate-900/90 backdrop-blur z-10">
-          <div className="flex gap-4">
-            <div className="w-16 h-24 shrink-0 overflow-hidden rounded">
-              <BookCover
-                title={book.title || 'Untitled'}
-                author={book.author || 'Unknown'}
-                genre={book.genre || ''}
-                coverUrl={book.cover || (book as any).coverUrl}
-                isbn={book.isbn}
-                size="sm"
-              />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">{book.title || 'Untitled'}</h2>
-              <p className="text-sm text-slate-400 mt-1">{book.author || 'Unknown Author'}</p>
-            </div>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Header Bar */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+            <BookOpen className="w-4 h-4 text-amber-500" />
+            <span>読書ログ詳細</span>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
-            <X className="w-5 h-5" />
-          </button>
+          
+          <div className="flex items-center gap-2">
+            {onOpenShare && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenShare(book.id);
+                }}
+                className="px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-amber-200"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>ログを共有</span>
+              </button>
+            )}
+
+            {!isEditing ? (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                <span>編集</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleSave}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>保存</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => onDelete(book.id)}
+              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+              title="削除"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors ml-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        <div className="p-6 space-y-6">
-          <div className="flex flex-wrap gap-4 items-center justify-between bg-slate-800/40 p-4 rounded-xl border border-slate-800">
-            <div>
-              <label className="text-xs font-semibold text-slate-400 block mb-1">読書ステータス</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as ReadingStatus)}
-                className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-amber-500"
-              >
-                <option value="to-read">読みたい</option>
-                <option value="reading">読書中</option>
-                <option value="completed">読了</option>
-              </select>
+        {/* Content Area */}
+        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          
+          {/* Main Info Section */}
+          <div className="flex flex-col sm:flex-row gap-6 items-start">
+            <div className="shrink-0 w-32 shadow-lg rounded-lg overflow-hidden border border-slate-100">
+              <BookCover title={book.title} author={book.author} coverUrl={book.coverUrl} />
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-slate-400 block mb-1">評価</label>
-              <div className="flex items-center gap-1">
+            <div className="flex-1 space-y-3">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 leading-snug">{book.title}</h2>
+                <p className="text-sm font-medium text-slate-500">{book.author}</p>
+              </div>
+
+              {/* Rating */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-slate-400 mr-1">評価:</span>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
-                    type="button"
-                    onClick={() => setRating(star)}
-                    onMouseEnter={() => setHoverRating(star)}
-                    onMouseLeave={() => setHoverRating(0)}
-                    className="p-1"
+                    disabled={!isEditing}
+                    onClick={() => handleRatingChange(star)}
+                    className={`${isEditing ? 'cursor-pointer hover:scale-110' : 'cursor-default'} transition-transform`}
                   >
                     <Star
                       className={`w-5 h-5 ${
-                        (hoverRating || rating) >= star
-                          ? 'text-amber-400 fill-amber-400'
-                          : 'text-slate-600'
+                        star <= editedBook.rating
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-slate-200'
                       }`}
                     />
                   </button>
                 ))}
               </div>
-            </div>
 
-            <div>
-              <label className="text-xs font-semibold text-slate-400 block mb-1">お気に入り</label>
-              <button
-                type="button"
-                onClick={() => setFavorite(!favorite)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                  favorite
-                    ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <Heart className={`w-4 h-4 ${favorite ? 'fill-rose-400' : ''}`} />
-                {favorite ? 'お気に入り' : '追加する'}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-slate-400 block mb-2 flex items-center gap-1.5">
-              <MessageSquare className="w-4 h-4 text-amber-400" /> 感想・メモ
-            </label>
-            <textarea
-              value={userNotes}
-              onChange={(e) => setUserNotes(e.target.value)}
-              rows={4}
-              placeholder="この本から得た気づきや印象に残ったシーンを入力..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-slate-400 block mb-2 flex items-center gap-1.5">
-              <Quote className="w-4 h-4 text-amber-400" /> 心に残ったフレーズ
-            </label>
-            <div className="space-y-2 mb-3">
-              {(quotes || []).map((q, idx) => (
-                <div key={idx} className="flex justify-between items-center bg-slate-800/60 border border-slate-700/50 p-2.5 rounded-lg text-sm text-slate-200">
-                  <p className="italic">"{q}"</p>
-                  <button onClick={() => handleRemoveQuote(idx)} className="text-slate-500 hover:text-rose-400 ml-2">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+              {/* Tags/Categories */}
+              {book.category && (
+                <div className="inline-block px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-medium">
+                  {book.category}
                 </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newQuote}
-                onChange={(e) => setNewQuote(e.target.value)}
-                placeholder="引用文を入力..."
-                className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
-              />
-              <button
-                type="button"
-                onClick={handleAddQuote}
-                className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              >
-                追加
-              </button>
+              )}
             </div>
           </div>
+
+          {/* Emotional Quadrant Tag */}
+          {book.quadrant && (
+            <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-3.5 flex items-center gap-3">
+              <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
+              <div>
+                <div className="text-xs font-bold text-amber-900">読後感の分類</div>
+                <div className="text-xs text-amber-700 font-medium">{book.quadrant}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Favorite Quote Section */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Quote className="w-3.5 h-3.5" /> 心に残ったフレーズ・引用
+            </label>
+            {isEditing ? (
+              <textarea
+                value={editedBook.quote || ''}
+                onChange={(e) => setEditedBook({ ...editedBook, quote: e.target.value })}
+                placeholder="本の中で印象的だった一言を記録..."
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[80px]"
+              />
+            ) : (
+              <div className="p-4 bg-slate-50 border-l-4 border-amber-400 rounded-r-xl italic text-sm text-slate-700">
+                {book.quote || '（引用文は未登録です）'}
+              </div>
+            )}
+          </div>
+
+          {/* Memo / Journal Section */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              感想・読書メモ
+            </label>
+            {isEditing ? (
+              <textarea
+                value={editedBook.memo || ''}
+                onChange={(e) => setEditedBook({ ...editedBook, memo: e.target.value })}
+                placeholder="読後の感想や学んだことを自由に書きましょう..."
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[120px]"
+              />
+            ) : (
+              <div className="p-4 bg-slate-50 rounded-xl text-sm text-slate-700 whitespace-pre-wrap leading-relaxed min-h-[100px]">
+                {book.memo || '（感想・メモは未登録です）'}
+              </div>
+            )}
+          </div>
+
         </div>
 
-        <div className="p-6 border-t border-slate-800 flex justify-between items-center bg-slate-900/90">
-          <button
-            onClick={() => {
-              if (confirm('この本を本棚から削除しますか？')) {
-                onDelete(book.id);
+        {/* Footer */}
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+          <span>追加日: {book.addedAt ? new Date(book.addedAt).toLocaleDateString() : '不明'}</span>
+          {onOpenShare && (
+            <button
+              onClick={() => {
                 onClose();
-              }
-            }}
-            className="text-rose-400 hover:text-rose-300 text-sm font-medium flex items-center gap-1.5"
-          >
-            <Trash2 className="w-4 h-4" /> 削除する
-          </button>
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800"
+                onOpenShare(book.id);
+              }}
+              className="text-amber-600 hover:text-amber-700 font-semibold flex items-center gap-1"
             >
-              キャンセル
+              <Share2 className="w-3.5 h-3.5" />
+              <span>この本を友達に教える</span>
             </button>
-            <button
-              onClick={handleSave}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2 rounded-xl text-sm transition-colors"
-            >
-              保存する
-            </button>
-          </div>
+          )}
         </div>
+
       </div>
     </div>
   );
-}
+};    
