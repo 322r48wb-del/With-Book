@@ -1,276 +1,531 @@
-import React, { useState } from 'react';
-import { Book } from '../types';
-import {
-  X,
-  Copy,
-  Check,
-  Share2,
-  Sparkles,
-  BookOpen,
-  User,
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import { 
+  X, 
+  Share2, 
+  Copy, 
+  Check, 
+  ExternalLink, 
+  FileText, 
+  Sparkles, 
+  Download, 
+  BookOpen, 
+  Trophy, 
+  Quote, 
+  Compass, 
   Send,
-  CheckCircle2
+  Smartphone,
+  BookMarked
 } from 'lucide-react';
+import { Book } from '../types';
+import { getBookFeelings, getFeelingQuadrant } from '../utils/feelingUtils';
+import BookCover from './BookCover';
 
 interface ShareLogsModalProps {
-  isOpen: boolean;
+  library: Book[];
+  readingGoal: number;
+  initialBook?: Book | null;
   onClose: () => void;
-  books: Book[];
-  selectedBookId?: string | null;
 }
 
-export const ShareLogsModal: React.FC<ShareLogsModalProps> = ({
-  isOpen,
-  onClose,
-  books,
-  selectedBookId = null
-}) => {
-  const [shareScope, setShareScope] = useState<'library' | 'single'>(
-    selectedBookId ? 'single' : 'library'
-  );
-  const [activeBookId, setActiveBookId] = useState<string>(
-    selectedBookId || books[0]?.id || ''
-  );
-  const [userName, setUserName] = useState('');
-  const [note, setNote] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [copiedText, setCopiedText] = useState(false);
+export default function ShareLogsModal({ library, readingGoal, initialBook, onClose }: ShareLogsModalProps) {
+  // Share mode: 'all' or 'single'
+  const [shareMode, setShareMode] = useState<'all' | 'single'>(initialBook ? 'single' : 'all');
+  const [selectedBookId, setSelectedBookId] = useState<string>(initialBook?.id || library[0]?.id || '');
+  const [readerName, setReaderName] = useState<string>('Avid Reader');
+  const [personalNote, setPersonalNote] = useState<string>('');
+  
+  // Link state
+  const [shareUrl, setShareUrl] = useState<string>('');
+  const [isGeneratingLink, setIsGeneratingLink] = useState<boolean>(false);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [copiedText, setCopiedText] = useState<boolean>(false);
+  const [shareSuccessMessage, setShareSuccessMessage] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  // Active single book if single mode selected
+  const activeBook = library.find(b => b.id === selectedBookId) || library[0] || null;
 
-  const targetBook = books.find((b) => b.id === activeBookId) || books[0];
+  // Derive stats
+  const completedCount = library.filter(b => b.status === 'completed').length;
+  const readingCount = library.filter(b => b.status === 'reading').length;
+  const topRatedBooks = [...library].sort((a, b) => b.rating - a.rating).slice(0, 3);
+  
+  // Collect a memorable quote from the library or active book
+  const featuredQuote = activeBook?.keyQuotes && activeBook.keyQuotes.length > 0
+    ? activeBook.keyQuotes[0]
+    : library.flatMap(b => b.keyQuotes || [])[0] || null;
 
-  const generateShareData = () => {
-    const payload = {
-      version: '1.0',
-      type: shareScope,
-      sender: userName.trim() || '読書好きの仲間',
-      note: note.trim(),
-      timestamp: new Date().toISOString(),
-      books: shareScope === 'single' && targetBook ? [targetBook] : books
+  // Generate shareable link
+  useEffect(() => {
+    let isMounted = true;
+    const createLink = async () => {
+      setIsGeneratingLink(true);
+      const booksToShare = shareMode === 'single' && activeBook ? [activeBook] : library;
+
+      try {
+        const res = await fetch('/api/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            books: booksToShare,
+            readingGoal,
+            readerName,
+            shareNote: personalNote,
+            singleBookId: shareMode === 'single' && activeBook ? activeBook.id : undefined,
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.shareUrl) {
+            setShareUrl(data.shareUrl);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Backend share error, using client URL fallback:', err);
+      }
+
+      // Safe client-side fallback encoding
+      try {
+        const payload = {
+          readerName,
+          readingGoal,
+          books: booksToShare.map(b => ({
+            id: b.id,
+            title: b.title,
+            author: b.author,
+            genre: b.genre,
+            rating: b.rating,
+            status: b.status,
+            userNotes: b.userNotes?.slice(0, 200),
+            keyQuotes: b.keyQuotes?.slice(0, 2),
+            feelings: b.feelings,
+            dateAdded: b.dateAdded,
+          }))
+        };
+        const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
+        const fallbackUrl = `${window.location.origin}${window.location.pathname}?shared_data=${encoded}`;
+        if (isMounted) setShareUrl(fallbackUrl);
+      } catch (e) {
+        if (isMounted) setShareUrl(window.location.href);
+      } finally {
+        if (isMounted) setIsGeneratingLink(false);
+      }
     };
-    const jsonString = JSON.stringify(payload);
-    const encoded = btoa(encodeURIComponent(jsonString));
-    const shareUrl = `${window.location.origin}${window.location.pathname}?share=${encoded}`;
-    return { payload, shareUrl };
-  };
 
-  const generateSummaryText = () => {
-    const sender = userName.trim() || '読書仲間';
-    if (shareScope === 'single' && targetBook) {
-      return `📚 【${sender}のおすすめ読書記録】\n『${targetBook.title}』(${targetBook.author})\n評価: ${'★'.repeat(targetBook.rating)}${'☆'.repeat(5 - targetBook.rating)}\n${targetBook.userNotes ? `💬 感想: "${targetBook.userNotes}"\n` : ''}${note ? `📝 メッセージ: ${note}\n` : ''}\n#WithBook #読書記録`;
+    createLink();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [shareMode, selectedBookId, readerName, personalNote, library, readingGoal]);
+
+  // Generate formatted plain text / markdown for social & chat sharing
+  const generateFormattedSummary = (): string => {
+    if (shareMode === 'single' && activeBook) {
+      const feelings = getBookFeelings(activeBook);
+      const quad = getFeelingQuadrant(feelings.happiness, feelings.impressed);
+      const stars = '★'.repeat(activeBook.rating) + '☆'.repeat(Math.max(0, 5 - activeBook.rating));
+      const hashtags = feelings.hashtags?.length ? feelings.hashtags.join(' ') : '#ReadingJournal #BookReview';
+      const quoteText = activeBook.keyQuotes && activeBook.keyQuotes.length > 0 
+        ? `\n💬 Key Quote: "${activeBook.keyQuotes[0]}"` 
+        : '';
+      const notesText = activeBook.userNotes ? `\n📝 Reflections: "${activeBook.userNotes}"` : '';
+
+      return `📖 Reading Log: "${activeBook.title}" by ${activeBook.author}
+Status: ${activeBook.status.toUpperCase()} | Rating: ${stars} (${activeBook.rating}/5)
+Genre: ${activeBook.genre}
+🧭 Emotional Vibe: ${quad.title} (${feelings.happiness >= 0 ? '+' : ''}${feelings.happiness}H, ${feelings.impressed >= 0 ? '+' : ''}${feelings.impressed}I)
+${hashtags}${quoteText}${notesText}
+
+Shared by ${readerName} via WITH BOOK 📚
+🔗 Read full log: ${shareUrl || window.location.href}`;
     }
-    return `📚 【${sender}の読書ライブラリ Passport】\n合計 ${books.length} 冊の読書ログを共有しました！\n${note ? `📝 メッセージ: ${note}\n` : ''}\n#WithBook #読書記録`;
+
+    // Entire library summary
+    const completedStr = `${completedCount}/${readingGoal} books completed (${Math.round((completedCount / (readingGoal || 1)) * 100)}%)`;
+    const topHighlights = topRatedBooks
+      .map(b => `• "${b.title}" by ${b.author} (${b.rating}/5★)`)
+      .join('\n');
+    const quoteStr = featuredQuote ? `\n💬 Favorite Quote:\n"${featuredQuote}"\n` : '';
+
+    return `📚 My Reading Log & Journey on WITH BOOK
+👤 Reader: ${readerName}
+🎯 2026 Reading Target: ${completedStr}
+📖 Currently Reading: ${readingCount} book${readingCount === 1 ? '' : 's'}
+
+⭐ Highlights & Favorites:
+${topHighlights || '• Just started building my reading shelves!'}
+${quoteStr}
+${personalNote ? `💭 Note: "${personalNote}"\n` : ''}
+🔗 Explore my complete reading shelf & emotional map:
+${shareUrl || window.location.href}`;
   };
 
   const handleCopyLink = () => {
-    const { shareUrl } = generateShareData();
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+    });
   };
 
-  const handleCopyText = () => {
-    const text = generateSummaryText();
-    navigator.clipboard.writeText(text);
-    setCopiedText(true);
-    setTimeout(() => setCopiedText(false), 2000);
+  const handleCopyFormattedText = () => {
+    const text = generateFormattedSummary();
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedText(true);
+      setTimeout(() => setCopiedText(false), 3000);
+    });
   };
 
   const handleNativeShare = async () => {
-    const { shareUrl } = generateShareData();
-    const text = generateSummaryText();
+    const text = generateFormattedSummary();
+    const title = shareMode === 'single' && activeBook 
+      ? `Reading Log: ${activeBook.title} - WITH BOOK` 
+      : `${readerName}'s Reading Journey - WITH BOOK`;
+
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'With Book 読書ログ共有',
-          text: text,
-          url: shareUrl
+          title,
+          text,
+          url: shareUrl || window.location.href,
         });
-      } catch (e) {
-        console.error('Share failed', e);
+        setShareSuccessMessage('Shared successfully!');
+        setTimeout(() => setShareSuccessMessage(null), 3000);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          handleCopyLink();
+        }
       }
     } else {
       handleCopyLink();
     }
   };
 
+  const handleDownloadBackup = () => {
+    const booksToExport = shareMode === 'single' && activeBook ? [activeBook] : library;
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      readerName,
+      readingGoal,
+      books: booksToExport
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `withbook-reading-logs-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-amber-50/50">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-fade-in">
+      <div className="bg-[#0F1115] rounded-xl border border-[#212429] shadow-2xl max-w-xl w-full max-h-[92vh] overflow-hidden flex flex-col transition-all duration-300">
+        
+        {/* Header toolbar */}
+        <div className="px-6 py-4 border-b border-[#212429] bg-[#16191F] flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-amber-500 text-white rounded-xl shadow-sm">
-              <Share2 className="w-5 h-5" />
+            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20">
+              <Share2 className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-bold text-slate-800 text-lg">読書ログを共有する</h2>
-              <p className="text-xs text-slate-500">あなたの読書体験や本棚を友達にシェアできます</p>
+              <h2 className="font-serif font-bold text-white text-base leading-tight">
+                Share Reading Logs
+              </h2>
+              <p className="text-[11px] text-[#9CA3AF] font-sans">
+                Share your reading journey, personal reviews, and quotes with friends
+              </p>
             </div>
           </div>
+
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+            className="p-1.5 text-[#9CA3AF] hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800">
-          {/* Scope Selector */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-              共有の範囲を選択
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setShareScope('library')}
-                className={`p-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
-                  shareScope === 'library'
-                    ? 'border-amber-500 bg-amber-50/60 text-amber-900 ring-2 ring-amber-500/20'
-                    : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                }`}
-              >
-                <BookOpen className="w-5 h-5 text-amber-600 shrink-0" />
-                <div>
-                  <div className="font-semibold text-sm">全ライブラリ（{books.length}冊）</div>
-                  <div className="text-xs text-slate-500">本棚全体のコレクションをまるごと共有</div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setShareScope('single')}
-                className={`p-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
-                  shareScope === 'single'
-                    ? 'border-amber-500 bg-amber-50/60 text-amber-900 ring-2 ring-amber-500/20'
-                    : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                }`}
-              >
-                <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
-                <div>
-                  <div className="font-semibold text-sm">1冊の読書記録</div>
-                  <div className="text-xs text-slate-500">特定の本のメモや評価をピックアップ</div>
-                </div>
-              </button>
-            </div>
+        {/* Modal content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          
+          {/* Share mode selector tabs */}
+          <div className="flex items-center bg-[#16191F] border border-[#212429] rounded-xl p-1 text-xs">
+            <button
+              onClick={() => setShareMode('all')}
+              className={`flex-1 py-2 rounded-lg font-sans font-semibold transition-all flex items-center justify-center gap-2 ${shareMode === 'all' ? 'bg-amber-500 text-black font-bold shadow-sm' : 'text-[#9CA3AF] hover:text-white'}`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Full Library ({library.length} books)</span>
+            </button>
+            <button
+              onClick={() => setShareMode('single')}
+              className={`flex-1 py-2 rounded-lg font-sans font-semibold transition-all flex items-center justify-center gap-2 ${shareMode === 'single' ? 'bg-amber-500 text-black font-bold shadow-sm' : 'text-[#9CA3AF] hover:text-white'}`}
+            >
+              <BookMarked className="w-3.5 h-3.5" />
+              <span>Specific Book Log</span>
+            </button>
           </div>
 
-          {/* Book Selector if single */}
-          {shareScope === 'single' && (
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                共有する本を選択
+          {/* Book selector if single mode */}
+          {shareMode === 'single' && (
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-mono tracking-wider text-[#6B7280] uppercase block">
+                SELECT BOOK TO SHARE
               </label>
               <select
-                value={activeBookId}
-                onChange={(e) => setActiveBookId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                value={selectedBookId}
+                onChange={(e) => setSelectedBookId(e.target.value)}
+                className="w-full text-xs bg-[#16191F] text-white border border-[#212429] rounded-lg py-2 px-3 font-sans focus:outline-none focus:ring-1 focus:ring-amber-500"
               >
-                {books.map((b) => (
+                {library.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.title} （{b.author}）
+                    {b.title} — by {b.author} ({b.status === 'completed' ? 'Done' : b.status === 'reading' ? 'Reading' : 'To Read'})
                   </option>
                 ))}
               </select>
             </div>
           )}
 
-          {/* Sender Info & Note */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Reader Profile Name input */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
-                <User className="w-3.5 h-3.5" /> あなたのお名前 (任意)
+              <label className="text-[10px] font-mono tracking-wider text-[#6B7280] uppercase block mb-1">
+                YOUR READER NAME
               </label>
               <input
                 type="text"
-                placeholder="例: たろう"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                value={readerName}
+                onChange={(e) => setReaderName(e.target.value)}
+                placeholder="e.g. Alex, Booklover99"
+                className="w-full px-3 py-1.5 text-xs bg-[#16191F] border border-[#212429] text-white placeholder-[#6B7280] rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
-                <Send className="w-3.5 h-3.5" /> 一言メッセージ (任意)
+              <label className="text-[10px] font-mono tracking-wider text-[#6B7280] uppercase block mb-1">
+                OPTIONAL MESSAGE / NOTE
               </label>
               <input
                 type="text"
-                placeholder="例: この本すごく良かったよ！"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                value={personalNote}
+                onChange={(e) => setPersonalNote(e.target.value)}
+                placeholder="e.g. Check out my 2026 reading favorites!"
+                className="w-full px-3 py-1.5 text-xs bg-[#16191F] border border-[#212429] text-white placeholder-[#6B7280] rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
             </div>
           </div>
 
-          {/* Preview Card */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">共有プレビュー</div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 text-sm space-y-2">
-              <div className="flex items-center justify-between text-xs text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md font-medium">
-                <span>読書パスポート ID: #{Math.floor(Math.random() * 8999 + 1000)}</span>
-                <span>{userName.trim() || '読書仲間'} からのシェア</span>
-              </div>
-              {shareScope === 'single' && targetBook ? (
-                <div className="pt-2">
-                  <div className="font-bold text-slate-800">{targetBook.title}</div>
-                  <div className="text-xs text-slate-500">{targetBook.author}</div>
-                  {targetBook.userNotes && (
-                    <p className="mt-2 text-xs italic text-slate-600 bg-slate-50 p-2 rounded border border-slate-100">
-                      "{targetBook.userNotes}"
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="pt-2 flex items-center gap-3">
-                  <div className="text-2xl font-black text-amber-600">{books.length}</div>
-                  <div className="text-xs text-slate-600">
-                    冊の読書コレクションと評価データが含まれています
-                  </div>
-                </div>
-              )}
-              {note && (
-                <div className="text-xs text-slate-600 pt-1 border-t border-slate-100">
-                  <span className="font-semibold text-slate-700">メッセージ: </span> {note}
-                </div>
+          {/* Shareable Link Box */}
+          <div className="bg-[#16191F] border border-[#212429] rounded-xl p-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-semibold tracking-wider text-amber-500 uppercase flex items-center gap-1.5">
+                <Share2 className="w-3 h-3" />
+                SHAREABLE WEB LINK
+              </span>
+              {copiedLink && (
+                <span className="text-[10px] text-emerald-400 font-mono font-medium flex items-center gap-1">
+                  <Check className="w-3 h-3" /> Copied to clipboard!
+                </span>
               )}
             </div>
-          </div>
-        </div>
 
-        {/* Footer Actions */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-2 justify-between items-center">
-          <button
-            onClick={handleCopyText}
-            className="px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl font-medium text-xs flex items-center gap-2 transition-colors shadow-sm"
-          >
-            {copiedText ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-            {copiedText ? 'テキスト用コピー完了' : 'テキストをコピー'}
-          </button>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={isGeneratingLink ? 'Generating share link...' : shareUrl}
+                className="flex-1 px-3 py-2 text-xs font-mono bg-[#0A0B0D] border border-[#212429] text-[#9CA3AF] rounded-lg select-all focus:outline-none"
+              />
+              <button
+                onClick={handleCopyLink}
+                disabled={!shareUrl}
+                className="px-3.5 py-2 text-xs font-sans font-semibold text-black bg-amber-500 hover:bg-amber-400 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-1.5 shrink-0 font-bold shadow-sm"
+                title="Copy shareable link"
+              >
+                {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedLink ? 'Copied' : 'Copy Link'}</span>
+              </button>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleCopyLink}
-              className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-medium text-xs flex items-center gap-2 transition-colors shadow-sm"
-            >
-              {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? 'リンクをコピーしました' : '共有リンクを発行してコピー'}
-            </button>
-            {typeof navigator !== 'undefined' && 'share' in navigator && (
+            {/* Action buttons: Open preview / Native device share */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
                 onClick={handleNativeShare}
-                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium text-xs flex items-center gap-2 transition-colors shadow-sm"
+                className="px-3 py-1.5 text-xs font-sans text-white bg-[#212429] hover:bg-[#2A2E35] rounded-lg transition-colors flex items-center gap-1.5"
               >
-                <Share2 className="w-4 h-4" /> シェアする
+                <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+                <span>Share via App...</span>
               </button>
-            )}
+
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 text-xs font-sans text-[#9CA3AF] hover:text-white bg-transparent hover:bg-[#212429] rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Test Link in New Tab</span>
+              </a>
+
+              {shareSuccessMessage && (
+                <span className="text-xs text-emerald-400 font-mono ml-auto">
+                  {shareSuccessMessage}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Visual Digital Reading Passport / Card Preview */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-mono tracking-wider text-[#6B7280] uppercase block">
+              CARD PREVIEW & FORMATTED SOCIAL POST
+            </span>
+            
+            <div className="bg-[#12151B] border border-[#212429] rounded-xl p-4 relative overflow-hidden group">
+              {/* Subtle aesthetic accent watermark */}
+              <div className="absolute right-3 top-3 text-[9px] font-mono text-amber-500/30 uppercase tracking-widest border border-amber-500/20 px-2 py-0.5 rounded">
+                WITH BOOK • PASSPORT
+              </div>
+
+              {shareMode === 'single' && activeBook ? (
+                <div className="flex gap-4 items-start">
+                  <div className="shrink-0">
+                    <BookCover title={activeBook.title} author={activeBook.author} genre={activeBook.genre} isbn={activeBook.isbn} size="sm" />
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-serif font-bold text-white truncate">
+                        {activeBook.title}
+                      </span>
+                      <span className="text-[10px] text-amber-500">
+                        {'★'.repeat(activeBook.rating)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#9CA3AF] font-sans">
+                      by {activeBook.author} • <span className="text-stone-400">{activeBook.genre}</span>
+                    </p>
+
+                    {/* Feelings badge */}
+                    {(() => {
+                      const f = getBookFeelings(activeBook);
+                      const q = getFeelingQuadrant(f.happiness, f.impressed);
+                      return (
+                        <div className="flex items-center gap-2 flex-wrap text-[10px] font-mono">
+                          <span className={`px-1.5 py-0.2 rounded font-semibold ${q.badgeColor}`}>
+                            {q.title}
+                          </span>
+                          {f.hashtags && f.hashtags.slice(0, 2).map((h, i) => (
+                            <span key={i} className="text-amber-300 bg-amber-500/10 px-1.5 py-0.2 rounded">
+                              {h}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    })()}
+
+                    {activeBook.userNotes && (
+                      <p className="text-[11px] font-serif italic text-stone-300 line-clamp-2 border-l border-[#212429] pl-2 mt-1">
+                        "{activeBook.userNotes}"
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#212429] pb-2">
+                    <div>
+                      <h4 className="font-serif font-bold text-white text-sm">
+                        {readerName}'s Reading Journey
+                      </h4>
+                      <p className="text-[10px] font-mono text-[#9CA3AF]">
+                        {library.length} books logged • {completedCount} finished
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded text-amber-400 font-mono text-[10px]">
+                      <Trophy className="w-3 h-3" />
+                      <span>{Math.round((completedCount / (readingGoal || 1)) * 100)}% Goal</span>
+                    </div>
+                  </div>
+
+                  {topRatedBooks.length > 0 && (
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-mono text-[#6B7280] uppercase tracking-wider block">
+                        TOP RATED SHELVES
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {topRatedBooks.map(b => (
+                          <span key={b.id} className="text-[10px] font-sans text-stone-300 bg-[#1A1E26] px-2 py-0.5 rounded border border-[#212429] flex items-center gap-1">
+                            <span>{b.title}</span>
+                            <span className="text-amber-500 font-mono text-[9px]">{b.rating}★</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {featuredQuote && (
+                    <div className="text-[11px] font-serif italic text-stone-300 border-l-2 border-amber-500/50 pl-2.5 py-0.5">
+                      "{featuredQuote}"
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Bottom copy formatted text button */}
+              <div className="mt-3 pt-3 border-t border-[#212429] flex items-center justify-between">
+                <span className="text-[10px] text-[#6B7280] font-sans">
+                  Ready for Discord, WhatsApp, Twitter/X, Instagram
+                </span>
+                <button
+                  onClick={handleCopyFormattedText}
+                  className="px-3 py-1 text-xs font-sans font-semibold text-stone-200 hover:text-white bg-[#1A1E26] hover:bg-[#252A36] border border-[#212429] rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  {copiedText ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <FileText className="w-3.5 h-3.5 text-amber-400" />}
+                  <span>{copiedText ? 'Copied Text!' : 'Copy Summary Text'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Footer actions */}
+        <div className="px-6 py-4 border-t border-[#212429] bg-[#16191F] flex items-center justify-between">
+          <button
+            onClick={handleDownloadBackup}
+            className="text-xs text-[#9CA3AF] hover:text-stone-200 flex items-center gap-1.5 font-sans"
+            title="Download JSON export file"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export Backup File (.json)</span>
+          </button>
+
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-sans font-semibold text-[#9CA3AF] hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors"
+            >
+              Close
+            </button>
+            <button
+              onClick={handleCopyLink}
+              className="px-5 py-2 text-xs font-sans font-bold text-black bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors shadow-sm flex items-center gap-1.5"
+            >
+              {copiedLink ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+              <span>{copiedLink ? 'Link Copied!' : 'Copy Share Link'}</span>
+            </button>
           </div>
         </div>
+
       </div>
     </div>
   );
-};
-
-export default ShareLogsModal;
+}
