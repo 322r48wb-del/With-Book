@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import BookPositioningMap from '../components/BookPositioningMap';
-import BookDetailModal from '../components/BookDetailModal';
-import ShareLogsModal from '../components/ShareLogsModal';
+import BookPositioningMap from './components/BookPositioningMap';
+import BookDetailModal from './components/BookDetailModal';
+import ShareLogsModal from './components/ShareLogsModal';
 
 // --- 型定義 ---
 export interface Book {
